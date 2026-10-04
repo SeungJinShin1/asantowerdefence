@@ -10,13 +10,18 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends
 
 from app.core.errors import AiUnavailableError
 from app.core.security import require_admin
-from app.routers.deps import get_variation_service
-from app.routers.schemas import QueuedResponse, VariantStatusResponse
+from app.routers.deps import get_leaderboard_service, get_variation_service
+from app.routers.schemas import LeaderboardResetResponse, QueuedResponse, VariantStatusResponse
+from app.services.leaderboard import LeaderboardService
 from app.services.variation import VariationService
+
+logger = logging.getLogger("app.admin")
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
@@ -29,6 +34,16 @@ async def rebuild_variants(
         raise AiUnavailableError("Gemini 가 설정되어 있지 않아 변형을 만들 수 없어요.")
     service.start_background_build()
     return QueuedResponse(queued=True)
+
+
+@router.post("/leaderboard/reset", response_model=LeaderboardResetResponse)
+async def reset_leaderboard(
+    service: LeaderboardService = Depends(get_leaderboard_service),
+) -> LeaderboardResetResponse:
+    """부스 시작 전·테스트 기록 정리용. 되돌릴 수 없으므로 관리자 토큰으로만, 실행은 로그에 남긴다."""
+    removed = service.reset()
+    logger.warning("leaderboard_reset", extra={"detail": f"removed={removed}"})
+    return LeaderboardResetResponse(removed=removed)
 
 
 @router.get("/variants/status", response_model=VariantStatusResponse)

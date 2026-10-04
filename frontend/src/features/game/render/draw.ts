@@ -7,7 +7,13 @@ import type { GameState } from '../engine/state'
 import { canBuildAt, towerStats } from '../engine/tower'
 import type { BackgroundLayer } from './background'
 import type { EffectLayer } from './effects'
-import { type SpriteCache, TOWER_COLORS, drawEnemySprite, drawTowerSprite } from './sprites'
+import {
+  BASE_SPRITE_URL,
+  type SpriteCache,
+  TOWER_COLORS,
+  drawEnemySprite,
+  drawTowerSprite,
+} from './sprites'
 
 export interface FrameParams {
   state: GameState
@@ -68,6 +74,20 @@ export function drawFrame(ctx: CanvasRenderingContext2D, p: FrameParams): void {
     )
   }
 
+  // 성(기지) 이미지가 있으면 배경의 도형 위에 덧그린다
+  const baseImg = p.sprites.get(BASE_SPRITE_URL)
+  if (baseImg) {
+    const end = gameCtx.path.points[gameCtx.path.points.length - 1]!
+    const baseSize = TILE_PX * 1.6
+    ctx.drawImage(
+      baseImg,
+      end.x * TILE_PX - baseSize / 2,
+      end.y * TILE_PX - baseSize * 0.7,
+      baseSize,
+      baseSize,
+    )
+  }
+
   for (const tower of state.towers) {
     drawTowerSprite(
       ctx,
@@ -109,6 +129,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, p: FrameParams): void {
       size,
       headingAt(gameCtx.path, enemy.dist),
       alpha,
+      state.stage,
     )
     // 체력바
     const ratio = enemy.hp / enemy.maxHp

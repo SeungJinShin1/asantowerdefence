@@ -131,3 +131,5 @@ def test_leaderboard_store_rank_and_top(db: FakeFirestore) -> None:
     assert store.rank_of(300) == 1
     assert store.rank_of(100) == 2
     assert store.rank_of(50) == 4
+    assert store.clear() == 3
+    assert store.top(10) == []

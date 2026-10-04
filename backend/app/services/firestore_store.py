@@ -156,3 +156,9 @@ class FirestoreLeaderboardStore:
     def rank_of(self, score: int) -> int:
         higher = list(self._col.where(filter=_field_filter("score", ">", score)).stream())
         return len(higher) + 1
+
+    def clear(self) -> int:
+        snaps = list(self._col.stream())
+        for snap in snaps:
+            self._col.document(snap.id).delete()
+        return len(snaps)

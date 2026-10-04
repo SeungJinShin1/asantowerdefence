@@ -87,6 +87,6 @@ npm run build && npm run lint
 ## 현재 상태 (2026-10-04)
 
 - 콘텐츠(문제 75문항, 학습 카드 34장)는 `backend/app/content/`에 준비됨 (사용자 검수 중 — 파일 내용은 사용자가 수정할 수 있음)
-- Phase 1(백엔드)·2(프론트 학습·퀴즈)·3(타워디펜스 엔진·Play/Result)·4(AI 연동, Gemini 목으로 검증) 구현 완료. 다음은 Phase 5(Firestore·리더보드·보안 마무리) → Phase 6(배포). 세부 진행·결정은 `docs/05_tasks.md` 순서를 따른다.
+- Phase 1~5 구현 완료(백엔드·프론트·타워디펜스 엔진·AI 연동(목)·Firestore 저장소·리더보드·보안 점검). Phase 6은 배포 자산(`backend/render.yaml`, `docs/06_booth_ops.md`, 스모크 스크립트)까지 준비됨 — 실제 Render/Vercel 배포와 Firestore 수동 설정(`docs/firestore_setup.md`)은 사용자 작업.
 - Gemini·Firestore 키는 아직 없음 → 메모리 저장소·Gemini 목으로 동작. 실제 키가 생기면 변형 20개 품질 검수(✋)부터 한다.
-- 이미지 자산은 사용자가 생성해 두었으나 아직 `frontend/public/assets/`에 없음(도형 폴백으로 표시 중).
+- 이미지 자산 19장은 `frontend/public/assets/`에 배치됨(원본은 `assets/raw/`, 재처리는 `scripts/prepare_assets.py`). 슬라임·골렘 원본은 왼쪽을 봐서 `render/sprites.ts`의 `FACES_LEFT`로 보정.

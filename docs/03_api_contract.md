@@ -12,7 +12,7 @@ Base URL: `{VITE_API_BASE_URL}` = `https://<render-app>.onrender.com/api/v1`
   { "error": { "code": "SESSION_EXPIRED", "message": "세션이 만료되었어요. 처음부터 다시 시작해 주세요." } }
   ```
   코드: `VALIDATION_ERROR`(422), `UNAUTHORIZED`(401), `SESSION_EXPIRED`(401), `NOT_FOUND`(404), `RATE_LIMITED`(429), `SCORE_REJECTED`(400), `NICKNAME_REJECTED`(400), `AI_UNAVAILABLE`(503), `INTERNAL`(500)
-- 요청 제한(IP 기준, slowapi): 기본 120/분. `POST /chat` 20/분, `POST /review` 5/분, `POST /leaderboard` 5/분, `POST /sessions` 10/분.
+- 요청 제한(IP 기준, slowapi): 기본 120/분. `POST /chat` 20/분, `POST /review` 5/분, `POST /leaderboard` 5/분, `POST /sessions` 30/분.
 
 ## 엔드포인트
 

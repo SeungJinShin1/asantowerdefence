@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
+from tests.conftest import TEST_ADMIN_TOKEN
 
 from app.services.session_store import InMemorySessionStore
 
@@ -101,3 +102,24 @@ def test_register_rejects_bad_nickname_without_echo(
 
 def test_register_requires_token(client: TestClient) -> None:
     assert client.post(f"{API}/leaderboard", json={"nickname": "탐험가"}).status_code == 401
+
+
+def test_admin_can_reset_leaderboard(
+    client: TestClient, session_store: InMemorySessionStore
+) -> None:
+    _, headers = finished_session(client, session_store)
+    assert (
+        client.post(
+            f"{API}/leaderboard", json={"nickname": "지울기록"}, headers=headers
+        ).status_code
+        == 201
+    )
+    assert len(client.get(f"{API}/leaderboard").json()) == 1
+
+    assert client.post(f"{API}/admin/leaderboard/reset").status_code == 401
+    reset = client.post(
+        f"{API}/admin/leaderboard/reset", headers={"X-Admin-Token": TEST_ADMIN_TOKEN}
+    )
+    assert reset.status_code == 200
+    assert reset.json() == {"removed": 1}
+    assert client.get(f"{API}/leaderboard").json() == []

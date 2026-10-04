@@ -233,6 +233,10 @@ class QueuedResponse(CamelModel):
     queued: bool = True
 
 
+class LeaderboardResetResponse(CamelModel):
+    removed: int
+
+
 class VariantStatusResponse(CamelModel):
     total: int
     with_variants: int

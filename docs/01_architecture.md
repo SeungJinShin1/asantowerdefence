@@ -54,7 +54,10 @@ defence/
 │  ├─ tests/                      # pytest (domain → services → routers 순)
 │  ├─ requirements.txt  requirements-dev.txt
 │  ├─ .env.example
-│  └─ render.yaml                 # (선택) Render Blueprint
+│  ├─ render.yaml                 # Render Blueprint(프록시 헤더·헬스체크·환경변수 목록)
+│  └─ scripts/smoke_concurrent.py # 부스 리허설용 동시 접속 스모크
+├─ scripts/prepare_assets.py         # 이미지 자산 정리(흰 배경 제거·트림·리사이즈 → frontend/public/assets)
+├─ assets/raw/                       # 원본 이미지(gitignore)
 └─ frontend/
    ├─ public/assets/
    │  ├─ towers/   tower_*.png

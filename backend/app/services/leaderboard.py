@@ -29,6 +29,8 @@ class LeaderboardStore(Protocol):
 
     def rank_of(self, score: int) -> int: ...
 
+    def clear(self) -> int: ...
+
 
 class InMemoryLeaderboardStore:
     def __init__(self) -> None:
@@ -49,6 +51,12 @@ class InMemoryLeaderboardStore:
     def rank_of(self, score: int) -> int:
         with self._lock:
             return sum(1 for _, e in self._entries if e.score > score) + 1
+
+    def clear(self) -> int:
+        with self._lock:
+            removed = len(self._entries)
+            self._entries.clear()
+        return removed
 
 
 def utcnow() -> datetime:
@@ -92,6 +100,10 @@ class LeaderboardService:
         return RegisterLeaderboardResponse(
             rank=self.store.rank_of(entry.score), score=entry.score, nickname=clean
         )
+
+    def reset(self) -> int:
+        """부스 운영용: 모든 기록을 지우고 지운 개수를 돌려준다(관리자 토큰 필수, 라우터에서 로그)."""
+        return self.store.clear()
 
     def list_top(self, limit: int = DEFAULT_LIMIT) -> list[LeaderboardRow]:
         limit = max(1, min(limit, MAX_LIMIT))

@@ -1,7 +1,7 @@
 """세션 생성 · 스테이지 시작 · 이벤트 · 종료 (docs/03 `POST /sessions`, `stages/{n}/start`, `events`, `finish`).
 
 보안 5항목:
-- 라우트 보호: POST /sessions 는 IP당 10/분. 나머지는 require_session(HMAC 토큰 + 경로 session_id 일치).
+- 라우트 보호: POST /sessions 는 IP당 30/분. 나머지는 require_session(HMAC 토큰 + 경로 session_id 일치).
 - DB 보안: SessionStore(Phase 1 메모리, Phase 5 Firestore Admin SDK)만 통해 접근.
 - ENV 노출 방지: 토큰 비밀키는 security 모듈 안에서만 쓰이고 응답에는 토큰 문자열만 나간다.
 - 서버 측 검증: 이벤트 상한·finish 상한·점수 계산은 SessionService/QuizService 가 수행. 클라이언트 점수는 무시.
@@ -32,7 +32,7 @@ router = APIRouter(tags=["sessions"])
 
 
 @router.post("/sessions", response_model=CreateSessionResponse, status_code=201)
-@limiter.limit("10/minute")
+@limiter.limit("30/minute")
 async def create_session(
     request: Request,
     body: CreateSessionRequest | None = None,

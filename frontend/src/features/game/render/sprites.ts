@@ -24,6 +24,11 @@ export const ENEMY_COLORS: Record<EnemyId, string> = {
   boss_final: '#5a3d7a',
 }
 
+export const BASE_SPRITE_URL = '/assets/base/base_castle.png'
+
+/** 원본 그림이 왼쪽을 보는 스프라이트(규칙은 오른쪽). 좌우 반전을 반대로 적용한다. 이미지를 바꾸면 여기만 고친다 */
+export const FACES_LEFT: ReadonlySet<string> = new Set(['slime', 'golem'])
+
 export function spriteUrl(kind: 'tower' | 'enemy', id: string): string {
   if (kind === 'tower') return `/assets/towers/tower_${id}.png`
   if (id.startsWith('boss_')) return `/assets/enemies/${id}.png`
@@ -67,7 +72,7 @@ export class SpriteCache {
 export function allSpriteUrls(stage: number): string[] {
   const towers = (Object.keys(TOWERS) as TowerId[]).map((id) => spriteUrl('tower', id))
   const enemies = (Object.keys(ENEMIES) as EnemyId[]).map((id) => spriteUrl('enemy', id))
-  return [...towers, ...enemies, `/assets/enemies/boss_mid_s${stage}.png`]
+  return [...towers, ...enemies, `/assets/enemies/boss_mid_s${stage}.png`, BASE_SPRITE_URL]
 }
 
 function roundRect(
@@ -131,13 +136,25 @@ export function drawEnemySprite(
   size: number,
   heading: -1 | 0 | 1,
   alpha: number,
+  stage?: number,
 ): void {
-  const img = cache.get(spriteUrl('enemy', type))
+  // 스테이지별 중간보스 변형(boss_mid_s1~5)이 있으면 우선, 없으면 기본 이미지 (docs/02 §5)
+  let spriteId: string = type
+  let img: HTMLImageElement | null = null
+  if (type === 'boss_mid' && stage) {
+    spriteId = `boss_mid_s${stage}`
+    img = cache.get(spriteUrl('enemy', spriteId))
+  }
+  if (!img) {
+    spriteId = type
+    img = cache.get(spriteUrl('enemy', type))
+  }
   ctx.save()
   ctx.globalAlpha = alpha
   if (img) {
     ctx.translate(cx, cy)
-    if (heading < 0) ctx.scale(-1, 1) // 원본은 오른쪽을 본다
+    const movingLeft = heading < 0
+    if (movingLeft !== FACES_LEFT.has(spriteId)) ctx.scale(-1, 1) // 규칙: 원본은 오른쪽을 본다
     ctx.drawImage(img, -size / 2, -size / 2, size, size)
   } else {
     const r = size * 0.4
