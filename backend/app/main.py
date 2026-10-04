@@ -15,8 +15,9 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.core.config import Settings, get_settings
 from app.core.errors import register_exception_handlers
@@ -131,6 +132,24 @@ def create_app(
     )
     app.add_middleware(RequestLogMiddleware)
     register_exception_handlers(app)
+
+    @app.get("/", include_in_schema=False)
+    async def root() -> Response:
+        """API 서버 루트: 사람이 브라우저로 열면 게임(프론트) 주소로 보낸다. 프론트 주소가 없으면 안내 JSON."""
+        origins = [
+            o
+            for o in settings.allowed_origins_list
+            if "localhost" not in o and "127.0.0.1" not in o
+        ]
+        if origins:
+            return RedirectResponse(origins[0], status_code=307)
+        return JSONResponse(
+            {
+                "name": "asan-defence-api",
+                "status": "ok",
+                "hint": "게임 화면은 프론트(Vercel) 주소에서 열어요. 상태 확인은 /healthz",
+            }
+        )
 
     @app.get("/healthz", response_model=HealthResponse, tags=["health"])
     async def healthz(request: Request) -> HealthResponse:

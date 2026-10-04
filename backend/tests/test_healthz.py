@@ -77,3 +77,14 @@ def test_production_rejects_placeholder_secrets(overrides: dict[str, str]) -> No
 def test_allowed_origins_parsing() -> None:
     settings = Settings(_env_file=None, allowed_origins=" http://a.test , https://b.test,,")
     assert settings.allowed_origins_list == ["http://a.test", "https://b.test"]
+
+
+def test_root_redirects_to_frontend_or_explains(client: TestClient, settings: Settings) -> None:
+    response = client.get("/", follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "https://example.vercel.app"
+
+    local_only = settings.model_copy(update={"allowed_origins": "http://localhost:5173"})
+    with TestClient(create_app(local_only)) as local_client:
+        body = local_client.get("/").json()
+        assert body["status"] == "ok" and "healthz" in body["hint"]
