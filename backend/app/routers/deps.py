@@ -15,6 +15,7 @@ from app.core.errors import SessionExpiredError, UnauthorizedError
 from app.core.security import verify_session_token
 from app.domain.models import Session
 from app.services.chat import ChatService
+from app.services.leaderboard import LeaderboardService
 from app.services.question_bank import QuestionBank
 from app.services.quiz_service import QuizService
 from app.services.review import ReviewService
@@ -57,6 +58,10 @@ def get_review_service(request: Request) -> ReviewService:
 
 def get_variation_service(request: Request) -> VariationService:
     return request.app.state.variation
+
+
+def get_leaderboard_service(request: Request) -> LeaderboardService:
+    return request.app.state.leaderboard
 
 
 def get_session_from_token(

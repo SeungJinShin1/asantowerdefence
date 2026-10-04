@@ -154,6 +154,19 @@ class FinishResult(CamelModel):
     finished_at: datetime
 
 
+class LeaderboardEntry(CamelModel):
+    """docs/04 §1 `defence_leaderboard` 문서. 닉네임 외 개인정보 없음."""
+
+    nickname: str
+    score: int
+    stage_reached: int
+    correct_count: int
+    combo_max: int
+    booth_mode: bool
+    session_id: str
+    created_at: datetime
+
+
 class Session(CamelModel):
     """한 명의 한 판. docs/04 §1 `defence_sessions` 문서와 같은 모양."""
 

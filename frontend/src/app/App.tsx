@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router'
 
 import { RequireSession } from '@/app/RequireSession'
+import { LeaderboardPage } from '@/pages/LeaderboardPage'
 import { LearnPage } from '@/pages/LearnPage'
 import { NicknamePage } from '@/pages/NicknamePage'
 import { PlayPage } from '@/pages/PlayPage'
@@ -12,7 +13,7 @@ import { TitlePage } from '@/pages/TitlePage'
 
 const guarded = (element: React.ReactNode) => <RequireSession>{element}</RequireSession>
 
-/** 화면 흐름(docs/02 §1). Leaderboard(Phase 5)는 이후 태스크에서 채운다. */
+/** 화면 흐름(docs/02 §1). 리더보드 조회는 공개, 등록은 페이지 안에서 세션이 있을 때만. */
 export function App() {
   return (
     <Routes>
@@ -23,6 +24,7 @@ export function App() {
       <Route path="/play/:stage" element={guarded(<PlayPage />)} />
       <Route path="/result" element={guarded(<ResultPage />)} />
       <Route path="/review" element={guarded(<ReviewPage />)} />
+      <Route path="/leaderboard" element={<LeaderboardPage />} />
       <Route path="/practice" element={guarded(<QuizPracticePage />)} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

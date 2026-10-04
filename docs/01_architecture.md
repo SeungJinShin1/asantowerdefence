@@ -43,7 +43,8 @@ defence/
 │  │  │  ├─ review.py             # 오답 정리 프롬프트·응답
 │  │  │  ├─ quiz_service.py       # 출제·채점 오케스트레이션 (stages/start, quiz/more, quiz/answer)
 │  │  │  ├─ session_service.py    # 세션 생성, 이벤트 검증·기록, finish 점수 확정
-│  │  │  ├─ session_store.py      # 세션 CRUD — SessionStore 프로토콜 + 메모리 구현 + Firestore 구현(Phase 5)
+│  │  │  ├─ session_store.py      # 세션 CRUD — SessionStore 프로토콜 + InMemorySessionStore
+│  │  │  ├─ firestore_store.py    # Firestore 구현(세션·변형 캐시·리더보드) — 서비스 계정 env 있을 때만 선택됨
 │  │  │  └─ leaderboard.py
 │  │  ├─ routers/
 │  │  │  ├─ schemas.py            # 03_api_contract.md의 요청/응답 DTO (camelCase)
@@ -96,7 +97,7 @@ defence/
 | `ADMIN_TOKEN` | `/api/v1/admin/*` 호출용 토큰 |
 | `GEMINI_API_KEY` | Gemini API 키 |
 | `GEMINI_MODEL` | 텍스트 모델명 (예: 사용자가 지정). 하드코딩 금지 |
-| `FIREBASE_SERVICE_ACCOUNT_B64` | 서비스 계정 JSON을 base64로 인코딩한 값 (Render 환경변수는 여러 줄 JSON을 다루기 불편하므로 base64 사용) |
+| `FIREBASE_SERVICE_ACCOUNT_B64` | 서비스 계정 JSON을 base64로 인코딩한 값 (Render 환경변수는 여러 줄 JSON을 다루기 불편하므로 base64 사용). 값이 있으면 Firestore 저장소, 없으면 메모리 저장소. 설정 절차는 `docs/firestore_setup.md` |
 | `FIRESTORE_COLLECTION_PREFIX` | 기본 `defence_` (개발/운영 분리용) |
 | `VARIANTS_PER_QUESTION` | 문제당 생성할 변형 수 (기본 2) |
 | `BOOTH_MODE` | `true`(기본, 스테이지당 3웨이브) / `false`(5웨이브). 세션 생성 시 확정되어 `boothMode`·`wavesPerStage`로 내려간다 |

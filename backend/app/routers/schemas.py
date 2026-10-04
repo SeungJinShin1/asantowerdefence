@@ -205,6 +205,27 @@ class ReviewResponse(CamelModel):
     summary: str
 
 
+# ---------- leaderboard ----------
+
+
+class RegisterLeaderboardRequest(CamelModel):
+    nickname: str = Field(min_length=1, max_length=20)
+
+
+class RegisterLeaderboardResponse(CamelModel):
+    rank: int
+    score: int
+    nickname: str
+
+
+class LeaderboardRow(CamelModel):
+    rank: int
+    nickname: str
+    score: int
+    stage_reached: int
+    created_at: datetime
+
+
 # ---------- admin ----------
 
 

@@ -175,3 +175,18 @@ def test_sanitize_text_cuts_at_sentence_boundary() -> None:
     cut = sanitize_text(text, 100)
     assert len(cut) <= 100
     assert cut.endswith("요.") or cut.endswith("요")
+
+
+def test_chat_logs_do_not_contain_message_text(
+    ai_client: TestClient,
+    headers: dict[str, str],
+    fake: FakeGeminiClient,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """docs/04 §8: 로그에 채팅 원문을 남기지 않는다(길이·토픽·소요시간만)."""
+    fake.push("온양은 백제 때 탕정이라고 불렸어요.")
+    with caplog.at_level("INFO"):
+        ask(ai_client, headers, "우리 학교 이름은 비밀학교야 온양 이야기 해줘")
+    assert "비밀학교" not in caplog.text
+    assert "탕정이라고 불렸어요" not in caplog.text
+    assert "chat_done" in caplog.text

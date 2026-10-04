@@ -3,9 +3,10 @@
  * - 개인정보 안내 문구: "닉네임과 점수만 기록됩니다"
  * - 숨김 메뉴: 로고를 5번 탭하면 부스 운영자 메뉴(세션 초기화, 모드 안내, 퀴즈 연습)
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 
+import { useRunStore } from '@/features/game/runStore'
 import { useProgressStore } from '@/features/session/progressStore'
 import { useSessionStore } from '@/features/session/sessionStore'
 import { Button } from '@/shared/ui/Button'
@@ -18,10 +19,22 @@ export function TitlePage() {
   const clearSession = useSessionStore((s) => s.clear)
   const resetProgress = useProgressStore((s) => s.reset)
   const menuOpen = taps >= HIDDEN_MENU_TAPS
+  const finished = useRunStore((s) => s.finish !== null)
+  const resetRun = useRunStore((s) => s.reset)
+
+  // 결과 화면을 거쳐 타이틀로 돌아오면(게임 종료) 다음 학생을 위해 세션·진행도·기록을 지운다 (docs/04 §3)
+  useEffect(() => {
+    if (finished) {
+      clearSession()
+      resetProgress()
+      resetRun()
+    }
+  }, [clearSession, finished, resetProgress, resetRun])
 
   const handleReset = () => {
     clearSession()
     resetProgress()
+    resetRun()
     setTaps(0)
   }
 

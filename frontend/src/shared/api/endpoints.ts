@@ -13,7 +13,9 @@ import type {
   GameEventResponse,
   HealthResponse,
   QuizMoreParams,
+  LeaderboardEntry,
   QuizMoreResponse,
+  RegisterLeaderboardResponse,
   ReviewResponse,
   StageStartResponse,
   Topic,
@@ -78,6 +80,18 @@ export function createApi(client: ApiClient) {
     /** 학습 챗봇 — 경로에 세션 id 가 없고 토큰으로만 인증한다 */
     chat: (auth: SessionAuth, body: ChatRequest) =>
       client.request<ChatResponse>('/chat', { method: 'POST', body, token: auth.token }),
+
+    /** 리더보드 등록 — finished 세션만, 세션당 1회 */
+    registerLeaderboard: (auth: SessionAuth, nickname: string) =>
+      client.request<RegisterLeaderboardResponse>('/leaderboard', {
+        method: 'POST',
+        body: { nickname },
+        token: auth.token,
+      }),
+
+    /** 상위 기록(공개) */
+    getLeaderboard: (limit = 20) =>
+      client.request<LeaderboardEntry[]>('/leaderboard', { query: { limit } }),
 
     /** 오답 정리 — finished 세션만. Gemini 응답이 느릴 수 있어 타임아웃을 넉넉히 */
     review: (auth: SessionAuth) =>

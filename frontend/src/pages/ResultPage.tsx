@@ -110,8 +110,13 @@ export function ResultPage() {
         >
           오답 정리
         </Button>
-        <Button variant="secondary" size="lg" disabled>
-          리더보드 (곧)
+        <Button
+          variant="secondary"
+          size="lg"
+          onClick={() => navigate('/leaderboard')}
+          disabled={!result}
+        >
+          리더보드
         </Button>
       </div>
     </main>
