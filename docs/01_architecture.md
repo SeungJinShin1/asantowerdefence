@@ -70,9 +70,11 @@ defence/
    │  │  ├─ quiz/                 # 퀴즈 팝업 모달, 타이머, 콤보 표시
    │  │  ├─ game/
    │  │  │  ├─ engine/            # 순수 로직: loop, path, spawner, tower, enemy, projectile, events, state
-   │  │  │  ├─ render/            # Canvas 그리기: background(주제별), sprites, hud, effects
+   │  │  │  ├─ render/            # Canvas 그리기: background(주제별, 캐시), sprites(이미지 없으면 도형 폴백), effects, draw(프레임)
    │  │  │  ├─ config/            # balance.ts, waves.ts, maps/*.ts (숫자·구성은 여기서만 수정)
-   │  │  │  └─ components/        # GameCanvas, HUD, BuildMenu, EventToast
+   │  │  │  ├─ components/        # GameCanvas, Hud(DOM — 글자 크기·접근성 때문에 Canvas 대신), BuildMenu, EventToast
+   │  │  │  ├─ controller.ts       # 엔진 ↔ React 다리(useSyncExternalStore 스냅샷, 액션, outbox 전달)
+   │  │  │  └─ runStore.ts         # 한 판 누적 기록(finish 보고값)
    │  │  ├─ review/               # 오답 정리 화면
    │  │  ├─ leaderboard/          # 기록 등록·순위 화면
    │  │  └─ result/               # 결과 화면
