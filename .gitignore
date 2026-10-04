@@ -1,0 +1,28 @@
+# 비밀값·환경
+.env
+.env.*
+!.env.example
+*.pem
+serviceAccount*.json
+
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vercel/
+npm-debug.log*
+
+# 이미지 원본(생성 결과는 frontend/public/assets/에만 커밋)
+assets/raw/
+
+# OS·IDE
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/

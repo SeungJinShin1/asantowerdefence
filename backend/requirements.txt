@@ -1,0 +1,8 @@
+# 런타임 의존성 — Python 3.12 기준으로 고정 (2026-09-29)
+fastapi==0.141.1
+pydantic==2.13.5
+pydantic-settings==2.15.0
+uvicorn[standard]==0.54.0
+google-genai==2.25.0
+firebase-admin==7.7.0
+slowapi==0.1.10

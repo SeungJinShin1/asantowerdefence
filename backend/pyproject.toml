@@ -1,0 +1,31 @@
+[project]
+name = "defence-backend"
+version = "0.1.0"
+description = "아산 향토사 타워디펜스 — FastAPI 백엔드"
+requires-python = ">=3.12,<3.13"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["app", "tests"]
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF"]
+ignore = [
+  "E501",   # 한글 주석은 동아시아 폭 계산으로 쉽게 100칸을 넘는다 — 코드 줄 길이는 리뷰로 관리
+  "B008",   # FastAPI Depends()/Header() 기본 인자 패턴
+  "RUF001", "RUF002", "RUF003",  # 한글 문자열·주석의 유니코드 혼동 경고
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+filterwarnings = [
+  # Starlette 1.x가 테스트 클라이언트에 httpx2를 권장하는 경고 — 계약상 httpx 유지, 동작에는 영향 없음
+  "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
