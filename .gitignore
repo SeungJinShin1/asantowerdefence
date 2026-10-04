@@ -4,6 +4,8 @@
 !.env.example
 *.pem
 serviceAccount*.json
+*firebase-adminsdk*.json
+*-firebase-*.json
 
 # Python
 backend/.venv/
