@@ -1,0 +1,34 @@
+@import 'tailwindcss';
+
+/* 아동 친화·접근성 기본값 (docs/02 §11): 글자 최소 18px, 버튼 최소 48px */
+:root {
+  font-family:
+    'Pretendard Variable',
+    Pretendard,
+    'Noto Sans KR',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  font-size: 18px;
+  line-height: 1.5;
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #fff8ec;
+  color: #2b2118;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  min-height: 48px;
+  min-width: 48px;
+}
