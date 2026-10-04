@@ -6,12 +6,13 @@ import { NicknamePage } from '@/pages/NicknamePage'
 import { PlayPage } from '@/pages/PlayPage'
 import { QuizPracticePage } from '@/pages/QuizPracticePage'
 import { ResultPage } from '@/pages/ResultPage'
+import { ReviewPage } from '@/pages/ReviewPage'
 import { StageSelectPage } from '@/pages/StageSelectPage'
 import { TitlePage } from '@/pages/TitlePage'
 
 const guarded = (element: React.ReactNode) => <RequireSession>{element}</RequireSession>
 
-/** 화면 흐름(docs/02 §1). Review(Phase 4)·Leaderboard(Phase 5)는 이후 태스크에서 채운다. */
+/** 화면 흐름(docs/02 §1). Leaderboard(Phase 5)는 이후 태스크에서 채운다. */
 export function App() {
   return (
     <Routes>
@@ -21,6 +22,7 @@ export function App() {
       <Route path="/learn/:stage" element={guarded(<LearnPage />)} />
       <Route path="/play/:stage" element={guarded(<PlayPage />)} />
       <Route path="/result" element={guarded(<ResultPage />)} />
+      <Route path="/review" element={guarded(<ReviewPage />)} />
       <Route path="/practice" element={guarded(<QuizPracticePage />)} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import Field
 
@@ -165,3 +166,55 @@ class FinishResponse(CamelModel):
     combo_max: int
     stage_reached: int
     wrong_quiz_ids: list[str]
+
+
+# ---------- POST /chat ----------
+
+
+class ChatMessage(CamelModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=500)
+
+
+class ChatRequest(CamelModel):
+    topic_id: str
+    messages: list[ChatMessage] = Field(min_length=1, max_length=40)
+
+
+class ChatResponse(CamelModel):
+    reply: str
+    suggested: list[str]
+
+
+# ---------- POST /sessions/{id}/review ----------
+
+
+class ReviewItem(CamelModel):
+    quiz_id: str
+    stem: str
+    your_answer: str
+    correct_answer: str
+    explanation: str
+    ai_note: str
+    retry_options: list[str]
+    retry_correct_index: int
+
+
+class ReviewResponse(CamelModel):
+    items: list[ReviewItem]
+    summary: str
+
+
+# ---------- admin ----------
+
+
+class QueuedResponse(CamelModel):
+    queued: bool = True
+
+
+class VariantStatusResponse(CamelModel):
+    total: int
+    with_variants: int
+    per_topic: dict[str, int]
+    last_built_at: datetime | None = None
+    building: bool = False

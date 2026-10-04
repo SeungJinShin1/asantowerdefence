@@ -33,6 +33,7 @@ from app.routers.schemas import (
 )
 from app.services.question_bank import QuestionBank
 from app.services.session_store import SessionStore
+from app.services.variation import VariantCache
 
 
 def utcnow() -> datetime:
@@ -40,18 +41,23 @@ def utcnow() -> datetime:
 
 
 class QuizService:
-    """스테이지 시작(배치 출제) · 추가 출제 · 채점. 상태는 전부 SessionStore 에 저장한다."""
+    """스테이지 시작(배치 출제) · 추가 출제 · 채점. 상태는 전부 SessionStore 에 저장한다.
+
+    변형 캐시가 있으면 docs/03 우선순위대로 변형 문장을 우선 출제한다(정답 사실은 원본과 같음).
+    """
 
     def __init__(
         self,
         question_bank: QuestionBank,
         store: SessionStore,
         *,
+        variant_cache: VariantCache | None = None,
         rng: random.Random | None = None,
         clock: Callable[[], datetime] = utcnow,
     ) -> None:
         self.question_bank = question_bank
         self.store = store
+        self.variant_cache = variant_cache
         self.rng = rng or random.Random()
         self.clock = clock
 
@@ -184,12 +190,16 @@ class QuizService:
         """슬롯마다 문항을 고르고(우선순위 ①~④) 보기를 섞어 세션에 기록한 뒤 클라이언트용 항목을 돌려준다."""
         pool = self.question_bank.questions_for_topic(topic_id)
         wrong_ids = {q.question_id for q in session.quizzes.values() if q.correct is False}
+        variants = self.variant_cache.by_topic(topic_id) if self.variant_cache else None
+        seen_variant_ids = {q.variant_id for q in session.quizzes.values() if q.variant_id}
         picks = select_for_slots(
             slots,
             pool,
             served_ids=set(session.served_question_ids),
             wrong_ids=wrong_ids,
             rng=self.rng,
+            variants=variants,
+            seen_variant_ids=seen_variant_ids,
         )
         room = max(scoring.MAX_QUIZZES_PER_SESSION - len(session.quizzes), 0)
         picks = picks[:room]  # docs/04 §1: 세션당 quizzes 최대 200건
@@ -197,17 +207,22 @@ class QuizService:
         now = self.clock()
         served: list[tuple[QuizSlot, QuizRecord]] = []
         for pick in picks:
-            options, correct_index = shuffle_options(
-                pick.question.options, pick.question.answer_index, self.rng
+            # 변형이 있으면 그 문장·보기(options[0] 정답)로, 없으면 원본으로 낸다
+            source_stem = pick.variant.stem if pick.variant else pick.question.stem
+            source_options = pick.variant.options if pick.variant else pick.question.options
+            answer_index = (
+                pick.variant.correct_index if pick.variant else pick.question.answer_index
             )
+            options, correct_index = shuffle_options(source_options, answer_index, self.rng)
             record = QuizRecord(
                 quiz_id=new_quiz_id(),
                 question_id=pick.question.id,
+                variant_id=pick.variant.variant_id if pick.variant else None,
                 topic_id=topic_id,
                 stage_order=stage_order,
                 kind=pick.slot.kind,
                 difficulty=pick.question.difficulty,
-                stem=pick.question.stem,
+                stem=source_stem,
                 options=options,
                 correct_index=correct_index,
                 explanation=pick.question.explanation,

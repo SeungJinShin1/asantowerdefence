@@ -3,6 +3,8 @@ import { type ApiClient, createApiClient, healthUrl, resolveBaseUrl } from './cl
 import type {
   AnswerRequest,
   AnswerResponse,
+  ChatRequest,
+  ChatResponse,
   CreateSessionRequest,
   CreateSessionResponse,
   FinishRequest,
@@ -12,6 +14,7 @@ import type {
   HealthResponse,
   QuizMoreParams,
   QuizMoreResponse,
+  ReviewResponse,
   StageStartResponse,
   Topic,
 } from './types'
@@ -70,6 +73,19 @@ export function createApi(client: ApiClient) {
         method: 'POST',
         body,
         token: auth.token,
+      }),
+
+    /** 학습 챗봇 — 경로에 세션 id 가 없고 토큰으로만 인증한다 */
+    chat: (auth: SessionAuth, body: ChatRequest) =>
+      client.request<ChatResponse>('/chat', { method: 'POST', body, token: auth.token }),
+
+    /** 오답 정리 — finished 세션만. Gemini 응답이 느릴 수 있어 타임아웃을 넉넉히 */
+    review: (auth: SessionAuth) =>
+      client.request<ReviewResponse>(sessionPath(auth, '/review'), {
+        method: 'POST',
+        body: {},
+        token: auth.token,
+        timeoutMs: 20_000,
       }),
   }
 }

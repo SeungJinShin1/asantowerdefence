@@ -102,8 +102,13 @@ export function ResultPage() {
         <Button size="lg" onClick={playAgain}>
           다시 도전
         </Button>
-        <Button variant="secondary" size="lg" disabled>
-          오답 정리 (곧)
+        <Button
+          variant="secondary"
+          size="lg"
+          onClick={() => navigate('/review')}
+          disabled={!result}
+        >
+          오답 정리
         </Button>
         <Button variant="secondary" size="lg" disabled>
           리더보드 (곧)

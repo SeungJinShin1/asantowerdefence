@@ -173,6 +173,7 @@ class Session(CamelModel):
     events: list[GameEventRecord] = Field(default_factory=list)
     result: FinishResult | None = None
     leaderboard_id: str | None = None
+    chat_count: int = 0  # 세션당 챗봇 호출 횟수(docs/04 §4: 40회/판)
 
     @property
     def is_finished(self) -> bool:

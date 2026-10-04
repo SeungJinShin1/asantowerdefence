@@ -12,11 +12,11 @@ QuizRecord.correct_index 에만 저장되며 응답 스키마(QuizItem)에는 �
 from __future__ import annotations
 
 import random
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Literal
 
-from app.domain.models import Question, QuizKind
+from app.domain.models import Question, QuizKind, Variant
 
 # ---------- 규칙 표 ----------
 
@@ -33,7 +33,7 @@ FINALBOSS_WAVE: dict[int, int] = {5: 5, 3: 3}
 RUSH_WAVE: dict[int, int] = {5: 4, 3: 3}
 SUPPORTED_WAVES_PER_STAGE: tuple[int, ...] = (3, 5)
 
-PickSource = Literal["fresh", "wrong_retry", "reuse"]
+PickSource = Literal["fresh", "variant", "wrong_retry", "reuse"]
 
 # 같은 웨이브 안에서 클라이언트 응답을 정렬할 때의 종류 순서
 _KIND_ORDER: dict[str, int] = {"normal": 0, "emergency": 1, "rush": 2}
@@ -123,11 +123,12 @@ def slot_sort_key(slot: QuizSlot) -> tuple[int, int]:
 
 @dataclass(frozen=True)
 class Pick:
-    """슬롯 하나에 배정된 문항과 그 출처."""
+    """슬롯 하나에 배정된 문항과 그 출처. variant 가 있으면 그 문장·보기로 낸다(정답은 options[0])."""
 
     slot: QuizSlot
     question: Question
     source: PickSource
+    variant: Variant | None = None
 
 
 def _difficulty_distance(question: Question, difficulties: tuple[int, ...]) -> int:
@@ -147,6 +148,14 @@ def _pick_nearest(
     return rng.choice(nearest)
 
 
+def _unseen_variants(
+    variants: Mapping[str, Sequence[Variant]] | None, question_id: str, seen: set[str]
+) -> list[Variant]:
+    if not variants:
+        return []
+    return [v for v in variants.get(question_id, ()) if v.valid and v.variant_id not in seen]
+
+
 def select_for_slots(
     slots: Sequence[QuizSlot],
     pool: Sequence[Question],
@@ -154,42 +163,54 @@ def select_for_slots(
     served_ids: Collection[str],
     wrong_ids: Collection[str],
     rng: random.Random,
+    variants: Mapping[str, Sequence[Variant]] | None = None,
+    seen_variant_ids: Collection[str] = (),
 ) -> list[Pick]:
     """슬롯 순서대로 문항을 하나씩 고른다 (docs/03 stages/start 출제 우선순위).
 
-    ① 미출제(served_ids 에 없고 이 배치에서 아직 안 쓴) 문항 중 slot.difficulties 에 맞는 것 → fresh
-    ② 미출제 아무 난이도 — 난이도 거리가 가장 가까운 것 우선 → fresh
-       (Phase 4: 이 자리에 '미출제 변형(Variant)' 단계가 들어간다 — 원본이 바닥난 뒤, ③ 전에.)
-    ③ wrong_ids 중 이 배치에서 안 쓴 것 — 난이도 맞는 것 우선 → wrong_retry
-    ④ pool 중 이 배치에서 안 쓴 아무 것 — 난이도 가까운 것 우선 → reuse
+    ① 미출제 원본 중 난이도가 맞는(없으면 가장 가까운) 것 → fresh.
+       그 문항에 아직 안 본 변형이 있으면 변형 문장으로 낸다(변형 캐시 우선, docs/03).
+    ② 원본은 이미 나왔지만 안 본 변형이 남은 문항 → variant
+    ③ wrong_ids 중 이 배치에서 안 쓴 것 → wrong_retry
+    ④ pool 중 이 배치에서 안 쓴 아무 것 → reuse (서비스가 보기를 다시 섞는다)
     아무것도 없으면 그 슬롯은 건너뛴다. 같은 tier 안에서는 rng 로 무작위.
     한 배치 안에서 같은 question.id 는 한 번만 나온다. 입력은 바꾸지 않는다.
     """
     served = set(served_ids)
     wrong = set(wrong_ids)
+    seen_variants = set(seen_variant_ids)
     used: set[str] = set()
     picks: list[Pick] = []
 
     for slot in slots:
         available = [q for q in pool if q.id not in used]
         source: PickSource = "fresh"
-        # ①+②: 미출제 중 난이도 거리가 가장 가까운 것 (거리 0 이면 ①, 아니면 ②)
+        variant: Variant | None = None
         question = _pick_nearest(
             [q for q in available if q.id not in served], slot.difficulties, rng
         )
         if question is None:
-            # (Phase 4 변형 단계 자리)
-            # ③: 틀렸던 문제 다시
+            source = "variant"
+            question = _pick_nearest(
+                [q for q in available if _unseen_variants(variants, q.id, seen_variants)],
+                slot.difficulties,
+                rng,
+            )
+        if question is None:
             source = "wrong_retry"
             question = _pick_nearest(
                 [q for q in available if q.id in wrong], slot.difficulties, rng
             )
         if question is None:
-            # ④: 최후 수단 — 이미 나온 문제 재출제 (서비스가 보기를 다시 섞는다)
             source = "reuse"
             question = _pick_nearest(available, slot.difficulties, rng)
         if question is None:
             continue
+        if source in ("fresh", "variant"):
+            candidates = _unseen_variants(variants, question.id, seen_variants)
+            if candidates:
+                variant = rng.choice(candidates)
+                seen_variants.add(variant.variant_id)
         used.add(question.id)
-        picks.append(Pick(slot=slot, question=question, source=source))
+        picks.append(Pick(slot=slot, question=question, source=source, variant=variant))
     return picks

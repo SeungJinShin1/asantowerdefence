@@ -11,6 +11,9 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -20,8 +23,12 @@ from app.core.logging import RequestLogMiddleware, configure_logging
 from app.core.security import setup_rate_limiting
 from app.routers import api_router
 from app.routers.schemas import HealthResponse
+from app.services.chat import ChatService
+from app.services.gemini_client import GeminiClient, GoogleGeminiClient
 from app.services.question_bank import QuestionBank
+from app.services.review import ReviewService
 from app.services.session_store import InMemorySessionStore, SessionStore
+from app.services.variation import InMemoryVariantCache, VariantCache, VariationService
 
 API_PREFIX = "/api/v1"
 
@@ -31,14 +38,33 @@ def create_app(
     *,
     question_bank: QuestionBank | None = None,
     session_store: SessionStore | None = None,
+    gemini_client: GeminiClient | None = None,
+    variant_cache: VariantCache | None = None,
+    build_variants_on_startup: bool = True,
 ) -> FastAPI:
-    """조립 지점(composition root). 테스트는 settings·문제 은행·저장소를 직접 주입한다.
+    """조립 지점(composition root). 테스트는 settings·문제 은행·저장소·Gemini 목을 직접 주입한다.
 
     기본값: 문제 은행은 settings.content_dir 에서 로드(깨진 콘텐츠면 기동 실패 — 의도된 fail-fast),
-    저장소는 InMemorySessionStore(Phase 5에서 Firestore 설정이 있으면 FirestoreSessionStore 로 교체).
+    저장소는 InMemorySessionStore(Phase 5에서 Firestore 설정이 있으면 교체), Gemini 는 키·모델이 있을 때만.
+    변형 캐시가 비어 있으면 시작 시 백그라운드 스레드로 생성한다(요청을 막지 않음, docs/01 §5).
     """
     settings = settings or get_settings()
     configure_logging(settings.log_level)
+
+    bank = question_bank if question_bank is not None else QuestionBank.load(settings.content_dir)
+    client = gemini_client
+    if client is None and settings.gemini_configured:
+        client = GoogleGeminiClient(settings.gemini_api_key, settings.gemini_model)
+    cache = variant_cache if variant_cache is not None else InMemoryVariantCache()
+    variation = VariationService(
+        bank, client, cache, variants_per_question=settings.variants_per_question
+    )
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        if build_variants_on_startup and not variation.ready():
+            variation.start_background_build()
+        yield
 
     app = FastAPI(
         title="아산 향토사 타워디펜스 API",
@@ -46,13 +72,16 @@ def create_app(
         docs_url=None if settings.is_production else "/docs",
         redoc_url=None,
         openapi_url=None if settings.is_production else "/openapi.json",
+        lifespan=lifespan,
     )
     app.state.settings = settings
-    app.state.question_bank = (
-        question_bank if question_bank is not None else QuestionBank.load(settings.content_dir)
-    )
+    app.state.question_bank = bank
     app.state.session_store = session_store if session_store is not None else InMemorySessionStore()
-    app.state.variants_ready = False  # Phase 4: 변형 캐시가 준비되면 True
+    app.state.gemini = client
+    app.state.variant_cache = cache
+    app.state.variation = variation
+    app.state.chat = ChatService(bank, client)
+    app.state.review = ReviewService(bank, client)
 
     # 요청 제한은 CORS·로그 미들웨어보다 먼저 등록한다(나중에 add 한 것이 바깥쪽).
     # 그래야 기본 한도(120/분) 초과 429 응답도 CORS 헤더와 요청 로그를 거친다.
@@ -73,7 +102,7 @@ def create_app(
         """프론트 첫 화면의 서버 깨우기용. 비밀값·내부 상태는 넣지 않는다."""
         return HealthResponse(
             version=settings.app_version,
-            variants_ready=bool(request.app.state.variants_ready),
+            variants_ready=request.app.state.variation.ready(),
         )
 
     app.include_router(api_router, prefix=API_PREFIX)

@@ -99,7 +99,7 @@ export function LearnPage() {
             completed={completed}
             onComplete={() => void handleComplete()}
           />
-          <ChatPanel topic={topic} />
+          <ChatPanel topic={topic} auth={auth} />
         </div>
       )}
     </main>

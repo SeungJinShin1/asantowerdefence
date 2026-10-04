@@ -5,7 +5,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
-import type { FinishResponse } from '@/shared/api'
+import type { FinishResponse, ReviewResponse } from '@/shared/api'
 
 export const RUN_STORAGE_KEY = 'defence.run.v1'
 
@@ -27,8 +27,11 @@ export interface RunState {
   lastStage: number | null
   history: StageEndRecord[]
   finish: FinishResponse | null
+  /** 오답 정리 응답 캐시(뒤로 가기 때 다시 부르지 않도록) */
+  review: ReviewResponse | null
   recordStageEnd: (record: StageEndRecord) => void
   setFinish: (result: FinishResponse) => void
+  setReview: (review: ReviewResponse) => void
   reset: () => void
 }
 
@@ -41,6 +44,7 @@ const EMPTY = {
   lastStage: null,
   history: [] as StageEndRecord[],
   finish: null,
+  review: null,
 }
 
 export const useRunStore = create<RunState>()(
@@ -61,6 +65,7 @@ export const useRunStore = create<RunState>()(
         })
       },
       setFinish: (finish) => set({ finish }),
+      setReview: (review) => set({ review }),
       reset: () => set({ ...EMPTY, history: [] }),
     }),
     { name: RUN_STORAGE_KEY, storage: createJSONStorage(() => window.sessionStorage) },
