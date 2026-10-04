@@ -13,11 +13,18 @@ from pathlib import Path
 from app.core.config import Settings
 from app.services.gemini_client import GoogleGeminiClient
 from app.services.question_bank import QuestionBank
-from app.services.variation import InMemoryVariantCache, VariationService, validate_variant, VariantValidationError
+from app.services.variation import (
+    InMemoryVariantCache,
+    VariantValidationError,
+    VariationService,
+    validate_variant,
+)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--questions", type=int, default=10, help="검수할 문항 수(주제별로 고르게)")
     parser.add_argument("--topic", default=None, help="특정 주제만")
     parser.add_argument("--out", default="variant_qa.md")
@@ -30,7 +37,9 @@ def main() -> int:
 
     bank = QuestionBank.load(settings.content_dir)
     client = GoogleGeminiClient(settings.gemini_api_key, settings.gemini_model)
-    service = VariationService(bank, client, InMemoryVariantCache(), variants_per_question=settings.variants_per_question)
+    service = VariationService(
+        bank, client, InMemoryVariantCache(), variants_per_question=settings.variants_per_question
+    )
 
     pool = [q for q in bank.questions if args.topic is None or q.topic_id == args.topic]
     # 주제별로 번갈아 고른다
@@ -47,10 +56,12 @@ def main() -> int:
     total_valid = total_rejected = 0
     for q in picked:
         topic = bank.get_topic(q.topic_id)
-        raw = client.generate_json(service.system_prompt, service._user_prompt(q, topic))  # noqa: SLF001 — 검수용
+        raw = client.generate_json(service.system_prompt, service._user_prompt(q, topic))
         items = raw.get("variants") if isinstance(raw, dict) else raw
         lines.append(f"\n## {q.id} ({q.topic_id}, 난이도 {q.difficulty})\n")
-        lines.append(f"- 원본: **{q.stem}** → 정답 `{q.options[q.answer_index]}`\n- 근거: {q.fact}\n")
+        lines.append(
+            f"- 원본: **{q.stem}** → 정답 `{q.options[q.answer_index]}`\n- 근거: {q.fact}\n"
+        )
         for i, item in enumerate(items if isinstance(items, list) else [], start=1):
             try:
                 stem, options = validate_variant(item, q)

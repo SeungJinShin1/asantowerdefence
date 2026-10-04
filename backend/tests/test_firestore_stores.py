@@ -12,6 +12,8 @@ from app.services.firestore_store import (
     FirestoreLeaderboardStore,
     FirestoreSessionStore,
     FirestoreVariantCache,
+    ServiceAccountError,
+    load_service_account,
 )
 from app.services.session_store import SessionAlreadyExistsError, SessionNotFoundError
 
@@ -133,3 +135,36 @@ def test_leaderboard_store_rank_and_top(db: FakeFirestore) -> None:
     assert store.rank_of(50) == 4
     assert store.clear() == 3
     assert store.top(10) == []
+
+
+SA = {"type": "service_account", "project_id": "p", "private_key": "k", "client_email": "e@p.iam"}
+
+
+def test_load_service_account_from_b64_tolerates_wrapping_and_padding() -> None:
+    import base64
+    import json
+
+    raw = base64.b64encode(json.dumps(SA).encode()).decode().rstrip("=")
+    wrapped = '"' + raw[:20] + chr(10) + raw[20:] + ' "'  # 따옴표·줄바꿈·끝 공백 섞인 값
+    assert load_service_account(wrapped)["project_id"] == "p"
+
+
+def test_load_service_account_errors_do_not_leak_content(tmp_path) -> None:
+    with pytest.raises(ServiceAccountError) as info:
+        load_service_account("A!!garbage")  # base64 가 아닌 값
+    assert "base64" in str(info.value) and "garbage" not in str(info.value)
+    with pytest.raises(ServiceAccountError):
+        load_service_account(service_account_file=str(tmp_path / "missing.json"))
+    bad = tmp_path / "bad.json"
+    bad.write_text("{}", encoding="utf-8")
+    with pytest.raises(ServiceAccountError) as info2:
+        load_service_account(service_account_file=str(bad))
+    assert "private_key" in str(info2.value)
+
+
+def test_load_service_account_from_file(tmp_path) -> None:
+    import json
+
+    path = tmp_path / "firebase.json"
+    path.write_text(json.dumps(SA), encoding="utf-8")
+    assert load_service_account(service_account_file=str(path))["client_email"] == "e@p.iam"

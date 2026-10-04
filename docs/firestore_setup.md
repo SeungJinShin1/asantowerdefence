@@ -32,6 +32,10 @@ service cloud.firestore {
 
 ## 5. 환경변수에 넣기
 
+**가장 쉬운 방법(Render Secret Files)**: Render 서비스 → Environment → **Secret Files → Add Secret File** → Filename `firebase.json`, Contents 에 내려받은 JSON 파일 내용을 그대로 붙여넣기 → 저장. 그리고 환경변수 `FIREBASE_SERVICE_ACCOUNT_FILE=/etc/secrets/firebase.json` 을 추가합니다. base64 변환이 필요 없습니다.
+
+**대안(base64 한 줄)**:
+
 Render 환경변수는 여러 줄 JSON 을 다루기 불편하므로 base64 한 줄로 넣습니다.
 
 - Windows PowerShell:

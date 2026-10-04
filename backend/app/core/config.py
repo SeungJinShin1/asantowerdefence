@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     gemini_model: str = ""  # 하드코딩 금지 — 반드시 환경변수로
 
     firebase_service_account_b64: str = ""
+    # Render 'Secret Files' 등으로 JSON 파일을 올렸을 때의 경로(예: /etc/secrets/firebase.json). b64 와 둘 중 하나만 있으면 된다
+    firebase_service_account_file: str = ""
     firestore_collection_prefix: str = "defence_"
 
     variants_per_question: int = 2
@@ -58,7 +60,7 @@ class Settings(BaseSettings):
 
     @property
     def firestore_configured(self) -> bool:
-        return bool(self.firebase_service_account_b64)
+        return bool(self.firebase_service_account_b64 or self.firebase_service_account_file)
 
     @model_validator(mode="after")
     def _reject_placeholder_secrets_in_production(self) -> Settings:

@@ -66,7 +66,9 @@ def create_app(
     # 저장소 선택: 명시 주입 > Firestore(서비스 계정 있음) > 메모리
     db = firestore_client
     if db is None and settings.firestore_configured:
-        db = create_firestore_client(settings.firebase_service_account_b64)
+        db = create_firestore_client(
+            settings.firebase_service_account_b64, settings.firebase_service_account_file
+        )
     prefix = settings.firestore_collection_prefix
     sessions: SessionStore = (
         session_store

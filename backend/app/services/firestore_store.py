@@ -11,6 +11,7 @@ import base64
 import json
 from collections.abc import Iterable
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from app.domain.models import LeaderboardEntry, Session, Variant
@@ -23,12 +24,53 @@ META = "meta"
 VARIANTS_META_DOC = "variants"
 
 
-def create_firestore_client(service_account_b64: str, app_name: str = "defence") -> Any:
-    """base64 서비스 계정 JSON 으로 Admin SDK 를 초기화하고 Firestore 클라이언트를 돌려준다."""
+class ServiceAccountError(ValueError):
+    """서비스 계정 설정이 잘못됐을 때(기동 거부). 메시지에 키 내용은 넣지 않는다."""
+
+
+def load_service_account(
+    service_account_b64: str = "", service_account_file: str = ""
+) -> dict[str, Any]:
+    """base64 문자열 또는 파일 경로에서 서비스 계정 JSON 을 읽는다. 공백·줄바꿈·따옴표·패딩 누락은 보정한다."""
+    if service_account_file:
+        try:
+            text = Path(service_account_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            raise ServiceAccountError(
+                f"FIREBASE_SERVICE_ACCOUNT_FILE 을 읽을 수 없어요: {exc.strerror}"
+            ) from None
+    elif service_account_b64:
+        cleaned = "".join(service_account_b64.split()).strip("'\"")
+        cleaned += "=" * (-len(cleaned) % 4)
+        try:
+            text = base64.b64decode(cleaned, validate=True).decode("utf-8")
+        except (ValueError, UnicodeDecodeError):
+            raise ServiceAccountError(
+                f"FIREBASE_SERVICE_ACCOUNT_B64 가 올바른 base64 가 아니에요(길이 {len(cleaned)}). "
+                "JSON 파일 전체를 base64 로 바꾼 값을 넣거나, 파일을 올리고 FIREBASE_SERVICE_ACCOUNT_FILE 을 쓰세요."
+            ) from None
+    else:
+        raise ServiceAccountError("서비스 계정 설정이 없어요.")
+    try:
+        info = json.loads(text)
+    except json.JSONDecodeError:
+        raise ServiceAccountError(
+            "서비스 계정 내용이 JSON 이 아니에요(파일 전체를 넣었는지 확인)."
+        ) from None
+    missing = [k for k in ("type", "project_id", "private_key", "client_email") if k not in info]
+    if missing:
+        raise ServiceAccountError(f"서비스 계정 JSON 에 필드가 빠졌어요: {', '.join(missing)}")
+    return info
+
+
+def create_firestore_client(
+    service_account_b64: str = "", service_account_file: str = "", app_name: str = "defence"
+) -> Any:
+    """서비스 계정(base64 또는 파일)으로 Admin SDK 를 초기화하고 Firestore 클라이언트를 돌려준다."""
     import firebase_admin
     from firebase_admin import credentials, firestore
 
-    info = json.loads(base64.b64decode(service_account_b64).decode("utf-8"))
+    info = load_service_account(service_account_b64, service_account_file)
     try:
         app = firebase_admin.get_app(app_name)
     except ValueError:
