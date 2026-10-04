@@ -38,7 +38,7 @@ services:
       - key: GEMINI_MODEL
         sync: false
       - key: FIREBASE_SERVICE_ACCOUNT_B64
-        sync: false # 또는 Secret Files 에 JSON 을 올리고 FIREBASE_SERVICE_ACCOUNT_FILE=/etc/secrets/firebase.json
+        sync: false # 서비스 계정 JSON 내용을 그대로 붙여넣어도 됨(base64 도 가능)
       - key: FIREBASE_SERVICE_ACCOUNT_FILE
         sync: false
       - key: SENTRY_DSN

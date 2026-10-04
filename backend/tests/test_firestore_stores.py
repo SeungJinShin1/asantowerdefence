@@ -168,3 +168,10 @@ def test_load_service_account_from_file(tmp_path) -> None:
     path = tmp_path / "firebase.json"
     path.write_text(json.dumps(SA), encoding="utf-8")
     assert load_service_account(service_account_file=str(path))["client_email"] == "e@p.iam"
+
+
+def test_load_service_account_accepts_raw_json_pasted() -> None:
+    import json
+
+    pasted = "  " + json.dumps(SA, indent=2) + chr(10)  # 파일 내용을 그대로 붙여넣은 모양
+    assert load_service_account(pasted)["project_id"] == "p"

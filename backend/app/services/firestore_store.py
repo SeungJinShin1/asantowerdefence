@@ -31,7 +31,10 @@ class ServiceAccountError(ValueError):
 def load_service_account(
     service_account_b64: str = "", service_account_file: str = ""
 ) -> dict[str, Any]:
-    """base64 문자열 또는 파일 경로에서 서비스 계정 JSON 을 읽는다. 공백·줄바꿈·따옴표·패딩 누락은 보정한다."""
+    """서비스 계정 JSON 을 읽는다. 값은 셋 중 아무 형태나 된다:
+    ① JSON 파일 내용을 그대로 붙여넣은 문자열(권장, 변환 불필요) ② base64 한 줄 ③ 파일 경로(FIREBASE_SERVICE_ACCOUNT_FILE).
+    공백·줄바꿈·따옴표·패딩 누락은 보정하고, 오류 메시지에 키 내용은 넣지 않는다.
+    """
     if service_account_file:
         try:
             text = Path(service_account_file).read_text(encoding="utf-8")
@@ -40,15 +43,19 @@ def load_service_account(
                 f"FIREBASE_SERVICE_ACCOUNT_FILE 을 읽을 수 없어요: {exc.strerror}"
             ) from None
     elif service_account_b64:
-        cleaned = "".join(service_account_b64.split()).strip("'\"")
-        cleaned += "=" * (-len(cleaned) % 4)
-        try:
-            text = base64.b64decode(cleaned, validate=True).decode("utf-8")
-        except (ValueError, UnicodeDecodeError):
-            raise ServiceAccountError(
-                f"FIREBASE_SERVICE_ACCOUNT_B64 가 올바른 base64 가 아니에요(길이 {len(cleaned)}). "
-                "JSON 파일 전체를 base64 로 바꾼 값을 넣거나, 파일을 올리고 FIREBASE_SERVICE_ACCOUNT_FILE 을 쓰세요."
-            ) from None
+        value = service_account_b64.strip()
+        if value.startswith("{"):
+            text = value  # JSON 을 그대로 붙여넣은 경우
+        else:
+            cleaned = "".join(value.split()).strip("'" + chr(34))
+            cleaned += "=" * (-len(cleaned) % 4)
+            try:
+                text = base64.b64decode(cleaned, validate=True).decode("utf-8")
+            except (ValueError, UnicodeDecodeError):
+                raise ServiceAccountError(
+                    f"FIREBASE_SERVICE_ACCOUNT_B64 가 JSON 도 base64 도 아니에요(길이 {len(cleaned)}). "
+                    "서비스 계정 JSON 파일 내용을 그대로 붙여넣으세요."
+                ) from None
     else:
         raise ServiceAccountError("서비스 계정 설정이 없어요.")
     try:
