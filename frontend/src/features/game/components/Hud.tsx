@@ -1,8 +1,8 @@
-/** HUD(DOM): 코인·체력·웨이브·콤보·2배 타임·일시정지. 글자 18px 이상, 색만으로 전달하지 않는다(docs/02 §11). */
+/** HUD(DOM): 코인·체력·웨이브·콤보·2배 타임·게임 속도·일시정지. 글자 18px 이상, 색만으로 전달하지 않는다(docs/02 §11). */
 import { ComboBadge } from '@/features/quiz/ComboBadge'
 import { Button } from '@/shared/ui/Button'
 
-import { MAX_LIVES } from '../config/balance'
+import { GAME_SPEEDS, type GameSpeed, MAX_LIVES } from '../config/balance'
 import type { HudSnapshot } from '../controller'
 
 const PHASE_LABEL: Record<HudSnapshot['wavePhase'], string> = {
@@ -20,15 +20,16 @@ export interface HudProps {
   stage: number
   onSkipPrep: () => void
   onTogglePause: () => void
+  onSetSpeed: (speed: GameSpeed) => void
 }
 
-export function Hud({ hud, combo, stage, onSkipPrep, onTogglePause }: HudProps) {
+export function Hud({ hud, combo, stage, onSkipPrep, onTogglePause, onSetSpeed }: HudProps) {
   const hearts = '❤️'.repeat(hud.lives) + '🖤'.repeat(Math.max(0, MAX_LIVES - hud.lives))
   const quizPaused = hud.pendingQuiz !== null
   return (
     <section
       aria-label="게임 상태"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/90 px-4 py-2 shadow"
+      className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white/90 px-4 py-2 shadow"
     >
       <div className="flex flex-wrap items-center gap-4">
         <span className="text-xl font-black text-amber-800" aria-label={`코인 ${hud.coins}`}>
@@ -50,7 +51,30 @@ export function Hud({ hud, combo, stage, onSkipPrep, onTogglePause }: HudProps) 
           </span>
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <div
+          role="group"
+          aria-label="게임 속도"
+          className="flex overflow-hidden rounded-xl border-2 border-amber-400"
+        >
+          {GAME_SPEEDS.map((speed) => {
+            const active = hud.speed === speed
+            return (
+              <button
+                key={speed}
+                type="button"
+                aria-pressed={active}
+                aria-label={`${speed}배 속도`}
+                onClick={() => onSetSpeed(speed)}
+                className={`min-h-12 min-w-12 px-3 text-base font-black transition ${
+                  active ? 'bg-amber-500 text-white' : 'bg-white text-amber-800 hover:bg-amber-50'
+                }`}
+              >
+                ×{speed}
+              </button>
+            )
+          })}
+        </div>
         {hud.wavePhase === 'prep' && hud.status === 'playing' && (
           <Button onClick={onSkipPrep}>바로 시작</Button>
         )}

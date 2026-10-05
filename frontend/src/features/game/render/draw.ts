@@ -53,7 +53,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, p: FrameParams): void {
         ctx,
         cx,
         cy,
-        towerStats(p.buildType, 1).range,
+        towerStats(p.buildType).range,
         ok ? TOWER_COLORS[p.buildType] : '#e03131',
       )
       ctx.globalAlpha = 0.6
@@ -69,7 +69,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, p: FrameParams): void {
       ctx,
       selected.tile.x * TILE_PX + TILE_PX / 2,
       selected.tile.y * TILE_PX + TILE_PX / 2,
-      towerStats(selected.type, selected.level).range,
+      towerStats(selected.type, selected.upgrades).range,
       TOWER_COLORS[selected.type],
     )
   }
@@ -106,7 +106,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, p: FrameParams): void {
     ctx.arc(
       proj.pos.x * TILE_PX,
       proj.pos.y * TILE_PX,
-      proj.tower === 'geobukseon' ? 7 : 4,
+      proj.splashRadius >= 1 ? 8 : proj.tower === 'geobukseon' ? 7 : 4,
       0,
       Math.PI * 2,
     )

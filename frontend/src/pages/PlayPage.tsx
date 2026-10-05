@@ -192,7 +192,7 @@ export function PlayPage({ onReady }: PlayPageProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-3 p-3 sm:p-4">
+    <main className="flex min-h-screen flex-col gap-2 p-2 sm:p-3">
       <EventToast toasts={toasts} />
       {controller ? (
         <PlayBoard
@@ -203,6 +203,7 @@ export function PlayPage({ onReady }: PlayPageProps) {
             const r = controller.handleTileClick(tile)
             if (!r.ok) setMessage(r.reason)
           }}
+          onMessage={setMessage}
         />
       ) : (
         <p className="p-8 text-center text-xl">게임을 불러오는 중…</p>
@@ -255,11 +256,13 @@ function PlayBoard({
   stage,
   combo,
   onTileClick,
+  onMessage,
 }: {
   controller: GameController
   stage: number
   combo: number
   onTileClick: (tile: { x: number; y: number }) => void
+  onMessage: (text: string) => void
 }) {
   const hud = useHud(controller)
   const selectedTower = controller.state.towers.find((t) => t.id === hud.selectedTowerId) ?? null
@@ -271,18 +274,29 @@ function PlayBoard({
         stage={stage}
         onSkipPrep={() => controller.skipPrep()}
         onTogglePause={() => controller.togglePause()}
+        onSetSpeed={(speed) => controller.setSpeed(speed)}
       />
-      <div className="grid gap-3 sm:grid-cols-[1fr_14rem]">
-        <GameCanvas controller={controller} onTileClick={onTileClick} />
-        <BuildMenu
-          hud={hud}
-          stage={stage}
-          selectedTower={selectedTower}
-          onPick={(type) => controller.setBuildType(type)}
-          onUpgrade={() => controller.upgradeSelected()}
-          onSell={() => controller.sellSelected()}
-          onDeselect={() => controller.select(null)}
-        />
+      {/* 캔버스는 화면 폭을 다 쓰되, 높이를 넘지 않도록 16:9 로 최대 크기를 잡는다(여백 최소화) */}
+      <div className="flex flex-1 flex-col gap-2 lg:flex-row lg:items-start">
+        <div className="flex min-w-0 flex-1 justify-center">
+          <div className="w-full" style={{ maxWidth: 'calc((100vh - 8.5rem) * 16 / 9)' }}>
+            <GameCanvas controller={controller} onTileClick={onTileClick} />
+          </div>
+        </div>
+        <div className="lg:w-64 lg:shrink-0">
+          <BuildMenu
+            hud={hud}
+            stage={stage}
+            selectedTower={selectedTower}
+            onPick={(type) => controller.setBuildType(type)}
+            onUpgrade={(track) => {
+              const r = controller.upgradeSelected(track)
+              if (!r.ok) onMessage(r.reason)
+            }}
+            onSell={() => controller.sellSelected()}
+            onDeselect={() => controller.select(null)}
+          />
+        </div>
       </div>
     </>
   )

@@ -102,6 +102,35 @@ describe('PlayPage — 웨이브 1 클리어 시나리오', () => {
     expect(screen.getByText(/웨이브 1\/3/)).toBeInTheDocument()
   })
 
+  it('게임 속도 버튼: 기본 ×2, 누르면 배속이 바뀌고 tick 이 그만큼 빨리 흐른다', async () => {
+    const c = await renderPlay()
+    expect(screen.getByRole('button', { name: '2배 속도' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(screen.getByRole('button', { name: '8배 속도' }))
+    expect(c.speed).toBe(8)
+    tick(c, 0.4) // 실시간 0.4초 × 8 = 준비 시간 3초를 넘긴다
+    expect(c.state.wave).toBe(1)
+  })
+
+  it('세운 타워를 누르면 업그레이드 옵션이 보이고, 옵션을 사면 코인이 줄고 단계가 오른다', async () => {
+    const c = await renderPlay()
+    await userEvent.click(screen.getByRole('button', { name: /온천 타워 50코인/ }))
+    act(() => {
+      c.handleTileClick({ x: 5, y: 5 })
+      c.setBuildType(null)
+      c.handleTileClick({ x: 5, y: 5 })
+    })
+    expect(screen.getByRole('region', { name: '타워 업그레이드' })).toHaveTextContent(
+      '업그레이드 0/6',
+    )
+    await userEvent.click(screen.getByRole('button', { name: '위력 업그레이드 30코인' }))
+    expect(c.state.coins).toBe(20)
+    expect(c.state.towers[0]!.upgrades.power).toBe(1)
+    expect(screen.getByRole('region', { name: '타워 업그레이드' })).toHaveTextContent(
+      '업그레이드 1/6',
+    )
+    expect(screen.getByRole('button', { name: '위력 업그레이드 45코인' })).toBeDisabled()
+  })
+
   it('타워를 고르고 타일을 클릭하면 코인이 줄고, 웨이브를 모두 처치하면 WAVE_CLEARED 를 보고한다', async () => {
     const c = await renderPlay()
     await userEvent.click(screen.getByRole('button', { name: /온천 타워 50코인/ }))
@@ -111,8 +140,14 @@ describe('PlayPage — 웨이브 1 클리어 시나리오', () => {
     expect(c.state.coins).toBe(50)
     expect(screen.getByLabelText(/코인 50/)).toBeInTheDocument()
 
-    tick(c, 3.2) // 웨이브 1 시작
-    tick(c, 7) // 6마리 모두 스폰
+    tick(c, 3.2) // 웨이브 1 시작 → 시작 퀴즈로 멈춤
+    expect(c.state.pendingQuiz).toBe('normal')
+    act(() => {
+      c.state.quizMarks = [] // 이 시나리오는 퀴즈 없이 웨이브만 본다
+      c.resumeQuiz()
+    })
+    tick(c, 6) // ×2 배속: 시뮬 12초 → 13마리 모두 스폰(마지막 11.2초)
+    expect(c.state.wavePhase).toBe('fighting')
     act(() => {
       for (const e of c.state.enemies) {
         if (!e.alive) continue
@@ -131,11 +166,11 @@ describe('PlayPage — 웨이브 1 클리어 시나리오', () => {
     expect(await screen.findByText('웨이브 클리어!')).toBeInTheDocument()
   })
 
-  it('14초가 지나면 퀴즈 모달이 열리고, 답하면 서버 채점 결과와 코인이 반영된다', async () => {
+  it('웨이브가 시작되면 바로 퀴즈 모달이 열리고, 답하면 서버 채점 결과와 코인이 반영된다', async () => {
     const c = await renderPlay()
     tick(c, 3.2)
-    tick(c, 14.2)
     expect(c.state.paused).toBe(true)
+    expect(c.state.enemies).toHaveLength(0) // 문제 푸는 동안 몬스터는 나오지 않는다
     const dialog = await screen.findByRole('dialog')
     expect(dialog).toHaveTextContent('문제 0')
 
@@ -154,6 +189,10 @@ describe('PlayPage — 웨이브 1 클리어 시나리오', () => {
   it('체력이 0 이 되면 실패 오버레이와 STAGE_FAILED 보고', async () => {
     const c = await renderPlay()
     tick(c, 3.2)
+    act(() => {
+      c.resumeQuiz()
+    })
+    tick(c, 0.1)
     act(() => {
       c.state.lives = 1
       c.state.enemies[0]!.dist = c.game.ctx.path.totalLength

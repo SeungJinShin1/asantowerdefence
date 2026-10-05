@@ -36,7 +36,7 @@ export const EVENT_DEFS: Record<GameEventId, GameEventDef> = {
     description: '+20 × 웨이브 번호 코인',
   },
   FAST_ANSWER_BONUS: { id: 'FAST_ANSWER_BONUS', title: '빠른 정답!', description: '+10 코인' },
-  HISTORY_RUSH: { id: 'HISTORY_RUSH', title: '역사 러시!', description: '20초 안에 3문제 연속' },
+  HISTORY_RUSH: { id: 'HISTORY_RUSH', title: '역사 러시!', description: '2문제 연속 도전!' },
   EMERGENCY_QUIZ: {
     id: 'EMERGENCY_QUIZ',
     title: '긴급 퀴즈!',
@@ -56,6 +56,6 @@ export const EVENT_PARAMS = {
   COMBO_MILESTONE: { combo: 5, coins: 100 },
   EMERGENCY_QUIZ: { bonusDamage: 100 },
   FULL_HEALTH_BONUS: { coins: 100 },
-  HISTORY_RUSH: { count: 3, windowSec: 20 },
+  HISTORY_RUSH: { count: 2, windowSec: 20 },
   FAST_ANSWER_BONUS: { coins: 10, withinMs: 5000 },
 } as const

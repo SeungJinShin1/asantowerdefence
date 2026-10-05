@@ -1,6 +1,7 @@
 /** 게임 상태 타입 — 엔진은 이 구조만 읽고 쓴다(DOM·Canvas 없음). 렌더는 읽기만 한다. */
 import type { EnemyId, TowerId } from '../config/balance'
 import type { GameEventId } from '../config/events'
+import type { UpgradeLevels } from '../config/upgrades'
 import type { Vec } from './path'
 
 export interface EnemyState {
@@ -22,7 +23,10 @@ export interface TowerState {
   id: number
   type: TowerId
   tile: { x: number; y: number }
+  /** 표시용 레벨 = 1 + 업그레이드 총 횟수 */
   level: number
+  /** 옵션별 업그레이드 단계(위력·연사·폭탄·관통·쌍발·사거리) */
+  upgrades: UpgradeLevels
   /** 다음 발사까지 남은 시간(초) */
   cooldown: number
   /** 지금까지 투자한 코인(판매 환급 기준) */
@@ -95,9 +99,15 @@ export interface GameState {
   spawnQueue: SpawnEntry[]
   nextId: number
   paused: boolean
-  /** 다음 일반 퀴즈까지 남은 시간(초) */
-  quizTimer: number
-  quizIntervalSec: number
+  /** 이번 웨이브에서 지금까지 나온 몬스터 수(퀴즈 페이싱 기준) */
+  spawnedThisWave: number
+  /** 아직 남은 일반 퀴즈 지점(스폰 수, 오름차순) */
+  quizMarks: number[]
+  /** 마지막 퀴즈 뒤 흐른 시간(초) — 스폰이 끝난 뒤 보조 출제용 */
+  sinceQuizSec: number
+  quizFallbackSec: number
+  /** 지금까지 요청한 퀴즈 수(러시 묶음은 1회) */
+  quizzesAsked: number
   pendingQuiz: QuizTriggerKind | null
   doubleCoinUntil: number
   /** 긴급 퀴즈 정답 보상: 다음 보스 첫 피격에 더해지는 피해 */

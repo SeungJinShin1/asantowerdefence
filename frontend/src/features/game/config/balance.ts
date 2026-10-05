@@ -15,8 +15,12 @@ export const LEARN_BONUS = 50
 export const MAX_LIVES = 10
 export const HP_MULT_PER_STAGE = 0.25 // 몬스터 체력 배율 = 1 + 0.25 × (stage − 1)
 export const GOLDEN_SLIME_CHANCE = 0.6
-export const QUIZ_INTERVAL_SEC = { full: 18, booth: 14 } as const
 export const WAVES_PER_STAGE = { full: 5, booth: 3 } as const
+
+/** 게임 속도 배율(실시간 → 시뮬레이션). 부스에서는 기다림이 없도록 기본 ×2 */
+export const GAME_SPEEDS = [1, 2, 4, 8] as const
+export type GameSpeed = (typeof GAME_SPEEDS)[number]
+export const DEFAULT_GAME_SPEED: GameSpeed = 2
 
 // ---------- 타워 ----------
 
@@ -113,13 +117,7 @@ export const TOWERS: Record<TowerId, TowerSpec> = {
 
 export const TOWER_ORDER: readonly TowerId[] = ['onsen', 'piri', 'geobukseon', 'bell', 'mansae']
 
-export const UPGRADE = {
-  maxLevel: 3,
-  /** 2레벨, 3레벨 비용 = 기본 비용 × 계수 */
-  costMult: { 2: 0.6, 3: 0.8 } as Record<number, number>,
-  damagePerLevel: 0.4,
-  rangePerLevel: 0.1,
-} as const
+// 업그레이드 옵션은 config/upgrades.ts
 
 export const SELL_REFUND = 0.6
 

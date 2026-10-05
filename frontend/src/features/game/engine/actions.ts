@@ -1,16 +1,17 @@
 /** 플레이어·서버 입력을 상태에 반영하는 액션들(건설·업그레이드·판매·퀴즈 결과·재개). 순수 함수. */
 import type { TowerId } from '../config/balance'
+import type { UpgradeTrack } from '../config/upgrades'
 import { armEmergencyBonus, checkComboMilestone } from './events'
 import { type GameContext, nextId } from './loop'
 import type { GameState, QuizTriggerKind } from './state'
 import {
+  applyUpgrade,
   buildCost,
   canBuildAt,
   createTower,
   isTowerUnlocked,
   sellValue,
   upgradeCost,
-  upgradeTower,
 } from './tower'
 
 export type ActionResult = { ok: true } | { ok: false; reason: string }
@@ -32,15 +33,20 @@ export function placeTower(
   return { ok: true }
 }
 
-export function upgradeTowerById(state: GameState, towerId: number): ActionResult {
+/** 고른 옵션(위력·연사·폭탄·관통·쌍발·사거리)을 1단계 올린다 */
+export function upgradeTowerById(
+  state: GameState,
+  towerId: number,
+  track: UpgradeTrack,
+): ActionResult {
   const index = state.towers.findIndex((t) => t.id === towerId)
   const tower = state.towers[index]
   if (!tower) return { ok: false, reason: '타워를 찾을 수 없어요.' }
-  const cost = upgradeCost(tower.type, tower.level)
-  if (cost === null) return { ok: false, reason: '이미 최고 레벨이에요.' }
+  const cost = upgradeCost(tower.type, tower.upgrades, track)
+  if (cost === null) return { ok: false, reason: '더 올릴 수 없어요.' }
   if (state.coins < cost) return { ok: false, reason: '코인이 부족해요.' }
   state.coins -= cost
-  state.towers[index] = upgradeTower(tower)
+  state.towers[index] = applyUpgrade(tower, track)
   return { ok: true }
 }
 

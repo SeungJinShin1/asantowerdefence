@@ -1,18 +1,21 @@
 import { describe, expect, it } from 'vitest'
 
 import { ONYANG_MAP } from '../config/maps/onyang'
+import { MAX_UPGRADES_PER_TOWER, ZERO_UPGRADES } from '../config/upgrades'
 import { createEnemy } from './enemy'
 import { buildPath } from './path'
 import { createProjectile, stepProjectile } from './projectile'
 import type { EnemyState } from './state'
 import {
+  applyUpgrade,
   canBuildAt,
   createTower,
   selectTarget,
+  selectTargets,
   sellValue,
+  totalUpgrades,
   towerStats,
   upgradeCost,
-  upgradeTower,
 } from './tower'
 
 // 가로 일직선 경로: (0,2) → (10,2). 타워는 (5,0) 에 두면 경로까지 거리 2
@@ -31,27 +34,66 @@ function enemyAt(
   return e
 }
 
-describe('towerStats / upgrade / sell', () => {
-  it('레벨당 피해 +40%, 사거리 +10%', () => {
-    expect(towerStats('onsen', 1)).toEqual({ damage: 6, range: 2 })
-    expect(towerStats('onsen', 2).damage).toBeCloseTo(8.4)
-    expect(towerStats('onsen', 2).range).toBeCloseTo(2.2)
-    expect(towerStats('onsen', 3).damage).toBeCloseTo(10.8)
-    expect(towerStats('onsen', 3).range).toBeCloseTo(2.4)
+describe('towerStats — 업그레이드 옵션 반영', () => {
+  it('기본 스탯: 피해·사거리·연사·폭발·관통·발 수', () => {
+    expect(towerStats('onsen')).toEqual({
+      damage: 6,
+      range: 2,
+      fireRate: 1.2,
+      splashRadius: 0.6,
+      pierce: 1,
+      shots: 1,
+    })
+    expect(towerStats('piri').pierce).toBe(3)
+    expect(towerStats('geobukseon').splashRadius).toBe(0)
   })
 
-  it('업그레이드 비용 ×0.6, ×0.8, 3레벨이 최대. 판매는 투자액의 60%', () => {
-    expect(upgradeCost('onsen', 1)).toBe(30)
-    expect(upgradeCost('onsen', 2)).toBe(40)
-    expect(upgradeCost('onsen', 3)).toBeNull()
+  it('위력 +35%/단계, 사거리 +20%, 연사 +30%, 폭탄 +0.5칸, 관통 +1, 쌍발 +1발', () => {
+    const s = towerStats('onsen', { ...ZERO_UPGRADES, power: 2, range: 1, speed: 1, splash: 1 })
+    expect(s.damage).toBeCloseTo(10.2)
+    expect(s.range).toBeCloseTo(2.4)
+    expect(s.fireRate).toBeCloseTo(1.56)
+    expect(s.splashRadius).toBeCloseTo(1.1)
+    expect(towerStats('piri', { ...ZERO_UPGRADES, pierce: 1 }).pierce).toBe(4)
+    expect(towerStats('mansae', { ...ZERO_UPGRADES, multishot: 2 }).shots).toBe(3)
+    // 거북선: 폭탄 옵션으로 단일 강타 → 범위 공격
+    expect(towerStats('geobukseon', { ...ZERO_UPGRADES, splash: 2 }).splashRadius).toBe(1)
+  })
+})
+
+describe('upgradeCost / applyUpgrade / sell', () => {
+  it('비용 = 기본 × 옵션 계수 × (1 + 0.5 × 현재 단계). 없는 옵션·최대 단계는 null', () => {
+    expect(upgradeCost('onsen', ZERO_UPGRADES, 'power')).toBe(30) // 50 × 0.6
+    expect(upgradeCost('onsen', { ...ZERO_UPGRADES, power: 1 }, 'power')).toBe(45)
+    expect(upgradeCost('onsen', { ...ZERO_UPGRADES, power: 2 }, 'power')).toBe(60)
+    expect(upgradeCost('onsen', { ...ZERO_UPGRADES, power: 3 }, 'power')).toBeNull()
+    expect(upgradeCost('onsen', ZERO_UPGRADES, 'multishot')).toBe(50)
+    expect(upgradeCost('onsen', { ...ZERO_UPGRADES, multishot: 1 }, 'multishot')).toBe(75)
+    expect(upgradeCost('onsen', { ...ZERO_UPGRADES, multishot: 2 }, 'multishot')).toBeNull()
+    expect(upgradeCost('onsen', ZERO_UPGRADES, 'pierce')).toBeNull() // 온천에는 관통 옵션이 없다
+    expect(upgradeCost('piri', ZERO_UPGRADES, 'pierce')).toBe(49) // 70 × 0.7
+  })
+
+  it('타워당 총 6회까지만 올릴 수 있다 → 무엇을 올릴지 골라야 한다', () => {
+    let t = createTower(1, 'onsen', { x: 5, y: 0 })
+    for (const track of ['power', 'power', 'power', 'speed', 'speed', 'speed'] as const) {
+      t = applyUpgrade(t, track)
+    }
+    expect(totalUpgrades(t.upgrades)).toBe(MAX_UPGRADES_PER_TOWER)
+    expect(t.level).toBe(7)
+    expect(upgradeCost('onsen', t.upgrades, 'splash')).toBeNull()
+    expect(applyUpgrade(t, 'splash')).toBe(t)
+  })
+
+  it('투자액이 누적되고 판매는 투자액의 60%', () => {
     const t1 = createTower(1, 'onsen', { x: 5, y: 0 })
     expect(t1.invested).toBe(50)
-    const t2 = upgradeTower(t1)
-    const t3 = upgradeTower(t2)
-    expect(t3.level).toBe(3)
-    expect(t3.invested).toBe(120)
-    expect(upgradeTower(t3)).toBe(t3)
-    expect(sellValue(t3)).toBe(72)
+    expect(t1.upgrades).toEqual(ZERO_UPGRADES)
+    const t2 = applyUpgrade(t1, 'power')
+    expect(t2.level).toBe(2)
+    expect(t2.invested).toBe(80)
+    expect(t1.upgrades.power).toBe(0) // 원본은 바뀌지 않는다
+    expect(sellValue(t2)).toBe(48)
     expect(sellValue(t1)).toBe(30)
   })
 })
@@ -70,13 +112,22 @@ describe('canBuildAt', () => {
   })
 })
 
-describe('selectTarget', () => {
+describe('selectTarget / selectTargets', () => {
   it('기본은 사거리 안에서 성에 가장 가까운(진행 거리 최대) 적', () => {
     const tower = createTower(1, 'onsen', { x: 5, y: 1 }) // 중심 (5.5, 1.5), 경로 y=2.5 → 수직 거리 1
     const far = enemyAt(1, 6.0) // (6.5, 2.5) → 거리 √2 ≈ 1.41, 사거리 2.0 안
     const near = enemyAt(2, 4.0)
     const outside = enemyAt(3, 9.0)
     expect(selectTarget(tower, [near, far, outside], line, 0)?.id).toBe(1)
+  })
+
+  it('쌍발: 우선순위대로 여러 대상을 고른다', () => {
+    const tower = createTower(1, 'onsen', { x: 5, y: 1 })
+    const a = enemyAt(1, 6.0)
+    const b = enemyAt(2, 5.0)
+    const c = enemyAt(3, 4.5)
+    expect(selectTargets(tower, [c, a, b], line, 0, 2).map((e) => e.id)).toEqual([1, 2])
+    expect(selectTargets(tower, [c], line, 0, 2).map((e) => e.id)).toEqual([3])
   })
 
   it('거북선은 체력이 가장 높은 적을, 숨은 유령은 무시한다', () => {
@@ -135,7 +186,17 @@ describe('projectiles', () => {
     expect(d.slowUntil).toBeCloseTo(4.5)
   })
 
-  it('피리는 직선으로 최대 3마리를 관통한다', () => {
+  it('폭탄 업그레이드: 거북선 포탄이 범위 피해를 주고, 위력 업그레이드가 피해에 반영된다', () => {
+    let geo = createTower(1, 'geobukseon', { x: 5, y: 0 })
+    geo = applyUpgrade(applyUpgrade(geo, 'splash'), 'power')
+    const a = enemyAt(1, 5.5, 'golem')
+    const b = enemyAt(2, 5.9)
+    const hits = flyUntilDone(createProjectile(10, geo, a, line), [a, b])
+    expect(hits.map((h) => h.enemyId).sort()).toEqual([1, 2])
+    expect(hits[0]!.damage).toBeCloseTo(40.5) // 30 × 1.35
+  })
+
+  it('피리는 직선으로 최대 3마리를 관통하고, 관통 업그레이드로 4마리', () => {
     const piri = createTower(1, 'piri', { x: 5, y: 2 }) // 경로 위에 두고 오른쪽으로 쏘게 한다(테스트용)
     const targets = [enemyAt(1, 6.5), enemyAt(2, 7.2), enemyAt(3, 7.9), enemyAt(4, 8.4)]
     const p = createProjectile(10, piri, targets[0]!, line)
@@ -143,6 +204,11 @@ describe('projectiles', () => {
     const hits = flyUntilDone(p, targets)
     expect(hits.map((h) => h.enemyId)).toEqual([1, 2, 3])
     expect(targets[3]!.hp).toBe(40)
+
+    const upgraded = applyUpgrade(piri, 'pierce')
+    const fresh = [enemyAt(1, 6.5), enemyAt(2, 7.2), enemyAt(3, 7.9), enemyAt(4, 8.4)]
+    const hits2 = flyUntilDone(createProjectile(11, upgraded, fresh[0]!, line), fresh)
+    expect(hits2.map((h) => h.enemyId)).toEqual([1, 2, 3, 4])
   })
 
   it('거북선은 보스에 +50% 피해, 긴급 퀴즈 보너스는 보스 첫 피격에 한 번만', () => {

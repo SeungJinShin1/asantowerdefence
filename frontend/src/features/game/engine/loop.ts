@@ -1,18 +1,13 @@
 /**
  * 게임 루프 — 고정 타임스텝(1/60) 순수 업데이트. 렌더(rAF)는 이 step 을 누적 시간만큼 반복 호출한다.
  * 일시정지(퀴즈 중)에는 시뮬레이션 시각이 흐르지 않는다. 사건은 state.outbox 로 내보낸다.
+ *
+ * 퀴즈 페이싱(docs/02 §6): 웨이브 시작 1문제 + 몬스터 12마리마다 1문제(config/waves.quizMarksFor),
+ * 보스 직전 긴급 퀴즈, 러시 웨이브는 시작 퀴즈 대신 연속 2문제. 스폰이 끝난 뒤 오래 조용하면 보조 출제.
  */
-import {
-  LEARN_BONUS,
-  MAX_LIVES,
-  QUIZ_INTERVAL_SEC,
-  START_COINS,
-  TOWERS,
-  type TowerId,
-} from '../config/balance'
-import { EVENT_PARAMS } from '../config/events'
+import { LEARN_BONUS, MAX_LIVES, START_COINS } from '../config/balance'
 import { type MapDef, mapForTopic } from '../config/maps'
-import { WAVE_PREP_SEC, type WaveDef, wavesFor } from '../config/waves'
+import { QUIZ_PACING, WAVE_PREP_SEC, type WaveDef, quizMarksFor, wavesFor } from '../config/waves'
 import { baseDamageOf, createEnemy, killCoins, speedOf, vanishesAtBase } from './enemy'
 import { grantCoins, grantFullHealthBonus, grantWaveClearBonus, startDoubleCoin } from './events'
 import { type PathData, buildPath, positionAt, reachedBase } from './path'
@@ -20,7 +15,7 @@ import { createProjectile, stepProjectile } from './projectile'
 import { type Rng, mathRng } from './rng'
 import { buildSpawnQueue, peekBoss, takeDue } from './spawner'
 import type { EnemyState, GameState } from './state'
-import { selectTarget } from './tower'
+import { selectTargets, statsOf } from './tower'
 
 export interface GameOptions {
   stage: number
@@ -44,6 +39,9 @@ export interface Game {
   ctx: GameContext
 }
 
+/** 한 프레임에 따라잡는 최대 시뮬레이션 시간(초). ×8 배속에서도 프레임당 8스텝 정도만 돈다 */
+export const MAX_CATCH_UP_SEC = 0.5
+
 export function createGame(options: GameOptions): Game {
   const map = options.map ?? mapForTopic(options.topicId)
   const booth = options.wavesPerStage === 3
@@ -65,8 +63,11 @@ export function createGame(options: GameOptions): Game {
     spawnQueue: [],
     nextId: 1,
     paused: false,
-    quizTimer: booth ? QUIZ_INTERVAL_SEC.booth : QUIZ_INTERVAL_SEC.full,
-    quizIntervalSec: booth ? QUIZ_INTERVAL_SEC.booth : QUIZ_INTERVAL_SEC.full,
+    spawnedThisWave: 0,
+    quizMarks: [],
+    sinceQuizSec: 0,
+    quizFallbackSec: booth ? QUIZ_PACING.fallbackSec.booth : QUIZ_PACING.fallbackSec.full,
+    quizzesAsked: 0,
     pendingQuiz: null,
     doubleCoinUntil: 0,
     bossBonusDamage: 0,
@@ -87,7 +88,7 @@ export function createGame(options: GameOptions): Game {
 
 export const nextId = (state: GameState): number => state.nextId++
 
-/** 다음 웨이브 시작(준비 시간 건너뛰기에도 사용) */
+/** 다음 웨이브 시작(준비 시간 건너뛰기에도 사용). 시작하자마자 첫 퀴즈(또는 러시)를 낸다 */
 export function startNextWave(state: GameState, ctx: GameContext): void {
   if (state.status !== 'playing' || state.wave >= state.wavesPerStage) return
   state.wave += 1
@@ -95,11 +96,16 @@ export function startNextWave(state: GameState, ctx: GameContext): void {
   state.spawnQueue = buildSpawnQueue(def, ctx.rng)
   state.wavePhase = 'spawning'
   state.phaseTimer = 0
+  state.spawnedThisWave = 0
+  state.quizMarks = quizMarksFor(def)
+  state.sinceQuizSec = 0
   state.outbox.push({ type: 'wave_started', wave: state.wave })
   if (def.rush && state.rushFiredWave !== state.wave) {
     state.rushFiredWave = state.wave
-    requestQuiz(state, 'rush', EVENT_PARAMS.HISTORY_RUSH.count)
+    requestQuiz(state, 'rush', QUIZ_PACING.rushCount) // 시작 퀴즈 자리를 러시(2문제)가 차지한다
+    return
   }
+  checkQuizMarks(state)
 }
 
 export function requestQuiz(
@@ -109,7 +115,18 @@ export function requestQuiz(
 ): void {
   state.pendingQuiz = kind
   state.paused = true
+  state.sinceQuizSec = 0
+  state.quizzesAsked += 1
   state.outbox.push({ type: 'quiz_requested', kind, count })
+}
+
+/** 스폰 수가 다음 퀴즈 지점에 닿았으면 일반 퀴즈 1개 요청 */
+function checkQuizMarks(state: GameState): boolean {
+  const mark = state.quizMarks[0]
+  if (mark === undefined || state.spawnedThisWave < mark) return false
+  state.quizMarks.shift()
+  requestQuiz(state, 'normal')
+  return true
 }
 
 /** 처치 처리(투사체 명중·디버그 공용): 코인·카운트·보스 이벤트 */
@@ -157,8 +174,10 @@ function stepSpawning(state: GameState): void {
     state.phaseTimer,
   )
   due.forEach((entry) => spawn(state, entry.enemy))
+  state.spawnedThisWave += due.length
   state.spawnQueue = [...rest, ...state.spawnQueue.filter((e) => e.isBoss)]
   if (state.spawnQueue.length === 0) state.wavePhase = 'fighting'
+  if (due.length > 0) checkQuizMarks(state)
 }
 
 function stepEnemies(state: GameState, ctx: GameContext, dt: number): void {
@@ -179,19 +198,21 @@ function stepEnemies(state: GameState, ctx: GameContext, dt: number): void {
   }
 }
 
+/** 타워 발사: 연사 옵션은 쿨다운, 쌍발 옵션은 발 수(대상이 모자라면 같은 대상에 한 발 더) */
 function stepTowers(state: GameState, ctx: GameContext, dt: number): void {
   for (const tower of state.towers) {
     tower.cooldown = Math.max(0, tower.cooldown - dt)
     if (tower.cooldown > 0) continue
-    const target = selectTarget(tower, state.enemies, ctx.path, state.time)
-    if (!target) continue
-    state.projectiles.push(createProjectile(nextId(state), tower, target, ctx.path))
-    tower.cooldown = 1 / towerFireRate(tower.type)
+    const stats = statsOf(tower)
+    const targets = selectTargets(tower, state.enemies, ctx.path, state.time, stats.shots)
+    if (targets.length === 0) continue
+    for (let i = 0; i < stats.shots; i += 1) {
+      const target = targets[i] ?? targets[0]!
+      state.projectiles.push(createProjectile(nextId(state), tower, target, ctx.path))
+    }
+    tower.cooldown = 1 / stats.fireRate
   }
 }
-
-/** 공격 속도는 레벨과 무관(docs/02 §4: 레벨은 피해·사거리만) */
-const towerFireRate = (type: TowerId): number => TOWERS[type].fireRate
 
 function stepProjectiles(state: GameState, ctx: GameContext, dt: number): void {
   for (const p of state.projectiles) {
@@ -207,7 +228,7 @@ function stepProjectiles(state: GameState, ctx: GameContext, dt: number): void {
   state.projectiles = state.projectiles.filter((p) => p.alive)
 }
 
-function stepWaveProgress(state: GameState, ctx: GameContext): void {
+function stepWaveProgress(state: GameState): void {
   if (state.wavePhase !== 'fighting') return
   if (state.enemies.some((e) => e.alive) || state.spawnQueue.length > 0) return
   // 웨이브 종료
@@ -223,7 +244,6 @@ function stepWaveProgress(state: GameState, ctx: GameContext): void {
   }
   state.wavePhase = 'prep'
   state.phaseTimer = 0
-  void ctx
 }
 
 export function step(state: GameState, ctx: GameContext, dt: number): void {
@@ -233,14 +253,17 @@ export function step(state: GameState, ctx: GameContext, dt: number): void {
 
   if (state.wavePhase === 'prep') {
     if (state.phaseTimer >= WAVE_PREP_SEC) startNextWave(state, ctx)
-    // 준비 시간에도 이미 나온 투사체·몬스터는 없다(웨이브 종료 조건) — 바로 반환
+    // 준비 시간에는 몬스터·투사체가 없다(웨이브 종료 조건) — 바로 반환
     return
   }
 
-  // 퀴즈 트리거(웨이브 진행 중에만)
-  state.quizTimer -= dt
-  if (state.quizTimer <= 0) {
-    state.quizTimer = state.quizIntervalSec
+  // 보조 출제: 스폰이 끝난 뒤(보스전 등) 오래 문제가 없으면 1개
+  state.sinceQuizSec += dt
+  if (
+    state.wavePhase === 'fighting' &&
+    state.sinceQuizSec >= state.quizFallbackSec &&
+    state.enemies.some((e) => e.alive)
+  ) {
     requestQuiz(state, 'normal')
     return
   }
@@ -254,12 +277,12 @@ export function step(state: GameState, ctx: GameContext, dt: number): void {
   stepTowers(state, ctx, dt)
   stepProjectiles(state, ctx, dt)
   state.enemies = state.enemies.filter((e) => e.alive)
-  stepWaveProgress(state, ctx)
+  stepWaveProgress(state)
 }
 
-/** 누적 실시간을 고정 타임스텝으로 쪼개 여러 번 step 한다(렌더 루프용). 한 프레임 최대 0.25초까지만 따라잡는다 */
+/** 누적 시뮬레이션 시간을 고정 타임스텝으로 쪼개 여러 번 step 한다(렌더 루프용) */
 export function advance(state: GameState, ctx: GameContext, elapsedSec: number, dt: number): void {
-  let remaining = Math.min(elapsedSec, 0.25)
+  let remaining = Math.min(elapsedSec, MAX_CATCH_UP_SEC)
   while (remaining >= dt && !state.paused && state.status === 'playing') {
     step(state, ctx, dt)
     remaining -= dt

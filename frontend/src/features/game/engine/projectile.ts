@@ -1,5 +1,6 @@
 /**
- * 투사체 — docs/02 §4 특징: 유도(단일/범위/감속), 직선 관통(피리 최대 3마리), 보스 추가 피해(거북선 +50%). 순수 함수.
+ * 투사체 — docs/02 §4 특징: 유도(단일/범위/감속), 직선 관통(피리 기본 3마리), 보스 추가 피해(거북선 +50%).
+ * 폭탄·관통 업그레이드는 towerStats 로 반영된 splashRadius·pierce 를 그대로 쓴다. 순수 함수.
  */
 import { TOWERS } from '../config/balance'
 import { applySlow, damageEnemy, isTargetable } from './enemy'
@@ -28,7 +29,12 @@ export function createProjectile(
   path: PathData,
 ): ProjectileState {
   const spec = TOWERS[tower.type]
-  const { damage, range } = towerStats(tower.type, tower.level)
+  const {
+    damage,
+    range,
+    splashRadius,
+    pierce: pierceCount,
+  } = towerStats(tower.type, tower.upgrades)
   const from = towerCenter(tower)
   const targetPos = positionAt(path, target.dist)
   const dx = targetPos.x - from.x
@@ -44,9 +50,9 @@ export function createProjectile(
     targetId: pierce ? null : target.id,
     lastTargetPos: targetPos,
     dir: { x: dx / len, y: dy / len },
-    pierceLeft: pierce ? (spec.pierce ?? 1) : 1,
+    pierceLeft: pierce ? pierceCount : 1,
     hitIds: [],
-    splashRadius: spec.splashRadius ?? 0,
+    splashRadius,
     slow: spec.slow ?? null,
     bossBonus: spec.bossBonus ?? 0,
     traveled: 0,

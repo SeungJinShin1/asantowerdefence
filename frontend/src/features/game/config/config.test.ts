@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
-import { ENEMIES, TOWERS, TOWER_ORDER, UPGRADE } from './balance'
+import { DEFAULT_GAME_SPEED, ENEMIES, GAME_SPEEDS, TOWERS, TOWER_ORDER } from './balance'
 import { EVENT_DEFS, EVENT_PARAMS } from './events'
-import { BOOTH_WAVES, FULL_WAVES, totalEnemies, wavesFor } from './waves'
+import { MAX_UPGRADES_PER_TOWER, TOWER_TRACKS, UPGRADE_TRACKS } from './upgrades'
+import {
+  BOOTH_WAVES,
+  FULL_WAVES,
+  QUIZ_PACING,
+  quizBudget,
+  quizMarksFor,
+  totalEnemies,
+  wavesFor,
+} from './waves'
 
 describe('balance — docs/02 §4·§5 표', () => {
   it('타워 5종의 비용·사거리·피해·공격속도', () => {
@@ -27,8 +36,17 @@ describe('balance — docs/02 §4·§5 표', () => {
     expect(TOWERS.bell.splashRadius).toBe(1.0)
     expect(TOWERS.onsen.slow).toEqual({ factor: 0.3, durationSec: 1.5 })
     expect(TOWER_ORDER.map((id) => TOWERS[id].unlockStage)).toEqual([1, 2, 3, 4, 5])
-    expect(UPGRADE.costMult[2]).toBe(0.6)
-    expect(UPGRADE.costMult[3]).toBe(0.8)
+    expect(GAME_SPEEDS).toEqual([1, 2, 4, 8])
+    expect(DEFAULT_GAME_SPEED).toBe(2)
+  })
+
+  it('업그레이드 옵션: 타워마다 4개, 옵션별 최대 단계, 타워당 총 6회', () => {
+    for (const id of TOWER_ORDER) expect(TOWER_TRACKS[id]).toHaveLength(4)
+    expect(TOWER_TRACKS.piri).toContain('pierce')
+    expect(TOWER_TRACKS.onsen).not.toContain('pierce')
+    expect(UPGRADE_TRACKS.multishot.maxLevel).toBe(2)
+    expect(UPGRADE_TRACKS.power.maxLevel).toBe(3)
+    expect(MAX_UPGRADES_PER_TOWER).toBe(6)
   })
 
   it('몬스터 8종의 체력·속도·코인·성 피해', () => {
@@ -51,24 +69,31 @@ describe('balance — docs/02 §4·§5 표', () => {
 
 describe('waves — docs/02 §2 구성표', () => {
   it('전체 모드 5웨이브: 수량·보스·러시 위치', () => {
-    expect(FULL_WAVES.map(totalEnemies)).toEqual([6, 13, 9, 20, 17])
+    expect(FULL_WAVES.map(totalEnemies)).toEqual([8, 20, 13, 31, 23])
     expect(FULL_WAVES.map((w) => w.boss ?? null)).toEqual([null, null, 'mid', null, 'final'])
     expect(FULL_WAVES.map((w) => Boolean(w.rush))).toEqual([false, false, false, true, false])
   })
 
-  it('부스 모드 3웨이브: 1 → (2+3, 중간보스) → (4+5 60%, 러시+최종보스)', () => {
-    expect(BOOTH_WAVES).toHaveLength(3)
-    expect(totalEnemies(BOOTH_WAVES[0]!)).toBe(6)
-    expect(totalEnemies(BOOTH_WAVES[1]!)).toBe(22)
-    expect(BOOTH_WAVES[1]!.boss).toBe('mid')
-    const late = BOOTH_WAVES[2]!
-    expect(late.boss).toBe('final')
-    expect(late.rush).toBe(true)
-    expect(totalEnemies(late)).toBeLessThan(37)
-    expect(totalEnemies(late)).toBeGreaterThanOrEqual(Math.floor(37 * 0.6))
+  it('부스 모드 3웨이브: 13 → 23(중간보스) → 37(러시+최종보스)', () => {
+    expect(BOOTH_WAVES.map(totalEnemies)).toEqual([13, 23, 37])
+    expect(BOOTH_WAVES.map((w) => w.boss ?? null)).toEqual([null, 'mid', 'final'])
+    expect(BOOTH_WAVES.map((w) => Boolean(w.rush))).toEqual([false, false, true])
     expect(wavesFor(3)).toBe(BOOTH_WAVES)
     expect(wavesFor(5)).toBe(FULL_WAVES)
     expect(() => wavesFor(4)).toThrow()
+  })
+})
+
+describe('퀴즈 페이싱 — 몬스터 수에 비례, 초반부터 출제', () => {
+  it('웨이브당 문제 수 = 몬스터 ÷ 12 (2~3개); 보스 직전 긴급·러시 2문제가 자리를 차지 → 부스 스테이지당 7문제', () => {
+    expect(QUIZ_PACING.rushCount).toBe(2)
+    expect(BOOTH_WAVES.map(quizBudget)).toEqual([2, 2, 3])
+    expect(quizMarksFor(BOOTH_WAVES[0]!)).toEqual([0, 6]) // 시작 + 6마리째
+    expect(quizMarksFor(BOOTH_WAVES[1]!)).toEqual([0]) // 시작 + 보스 직전 긴급
+    expect(quizMarksFor(BOOTH_WAVES[2]!)).toEqual([]) // 러시 2문제 + 보스 직전 긴급
+    expect(FULL_WAVES.map(quizBudget)).toEqual([2, 2, 2, 3, 2])
+    expect(quizMarksFor(FULL_WAVES[0]!)).toEqual([0, 4])
+    expect(quizMarksFor(FULL_WAVES[3]!)).toEqual([20]) // 러시 뒤 20마리째
   })
 })
 

@@ -11,19 +11,19 @@ const golden = (where: number): Rng => {
 }
 
 describe('buildSpawnQueue', () => {
-  it('웨이브 1: 슬라임 6마리가 1.2초 간격', () => {
+  it('웨이브 1: 슬라임 8마리가 1.0초 간격', () => {
     const q = buildSpawnQueue(FULL_WAVES[0]!, noGolden)
-    expect(q.map((e) => e.enemy)).toEqual(Array(6).fill('slime'))
-    expect(q.map((e) => e.at)).toEqual([0, 1.2, 2.4, 3.6, 4.8, 6])
+    expect(q.map((e) => e.enemy)).toEqual(Array(8).fill('slime'))
+    expect(q.map((e) => e.at)).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
   })
 
   it('그룹 사이에는 GROUP_GAP_SEC, 보스는 마지막 스폰 + BOSS_DELAY_SEC', () => {
-    const wave3 = FULL_WAVES[2]! // 골렘2(2.0) → 슬라임4(1.2) → 유령3(1.2) → 중간보스
+    const wave3 = FULL_WAVES[2]! // 골렘3(1.6) → 슬라임6(1.0) → 유령4(1.0) → 중간보스
     const q = buildSpawnQueue(wave3, noGolden)
     expect(q).toHaveLength(totalEnemies(wave3) + 1)
-    const golemLast = 2.0 // 골렘 2마리: 0, 2.0
+    const golemLast = 3.2 // 골렘 3마리: 0, 1.6, 3.2
     const slimeFirst = golemLast + GROUP_GAP_SEC
-    expect(q[2]!.at).toBeCloseTo(slimeFirst)
+    expect(q[3]!.at).toBeCloseTo(slimeFirst)
     const last = q[q.length - 2]!
     const boss = q[q.length - 1]!
     expect(boss).toMatchObject({ enemy: 'boss_mid', isBoss: true })
@@ -35,7 +35,7 @@ describe('buildSpawnQueue', () => {
     const q = buildSpawnQueue(FULL_WAVES[0]!, golden(0.5))
     const goldenEntries = q.filter((e) => e.enemy === 'golden_slime')
     expect(goldenEntries).toHaveLength(1)
-    expect(goldenEntries[0]!.at).toBeCloseTo(3) // 0.5 × 6
+    expect(goldenEntries[0]!.at).toBeCloseTo(3.5) // 0.5 × 7
     expect(q.map((e) => e.at)).toEqual([...q.map((e) => e.at)].sort((a, b) => a - b))
     expect(buildSpawnQueue(FULL_WAVES[0]!, noGolden).some((e) => e.enemy === 'golden_slime')).toBe(
       false,
@@ -53,8 +53,8 @@ describe('takeDue / peekBoss', () => {
   it('타이머 이하 항목만 꺼내고 나머지를 남긴다', () => {
     const q = buildSpawnQueue(FULL_WAVES[0]!, noGolden)
     const { due, rest } = takeDue(q, 2.5)
-    expect(due.map((e) => e.at)).toEqual([0, 1.2, 2.4])
-    expect(rest).toHaveLength(3)
+    expect(due.map((e) => e.at)).toEqual([0, 1, 2])
+    expect(rest).toHaveLength(5)
   })
 
   it('보스가 맨 앞에 와서 시간이 되면 peekBoss 가 돌려준다', () => {

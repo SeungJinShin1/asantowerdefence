@@ -58,8 +58,9 @@ SCORE_COINS_CAP = 500  # 남은 코인 환산 상한
 #       2배 타임 여유로 ×2 ≈ 1100.
 MAX_CLIENT_BONUS_PER_STAGE = 1100
 # 웨이브당 클라이언트가 지급할 수 있는 코인의 상한.
-# 근거: 웨이브 최대 처치 코인 ≈ 122 + 황금 슬라임 50 + 웨이브 보너스 최대 100 = 272, 2배 타임 여유 ×2 → 600.
-MAX_CLIENT_BONUS_PER_WAVE = 600
+# 근거(부스 3웨이브 기준, 가장 큰 웨이브 37마리): 처치 코인 ≈ 212 + 황금 슬라임 50 + 최종보스 120
+#       + 웨이브 보너스 최대 100 = 482, 2배 타임 여유 ×2 ≈ 964 → 1000.
+MAX_CLIENT_BONUS_PER_WAVE = 1000
 
 
 def waves_per_stage(booth_mode: bool) -> int:

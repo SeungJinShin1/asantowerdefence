@@ -117,13 +117,18 @@ export function drawTowerSprite(
     ctx.textBaseline = 'middle'
     ctx.fillText(TOWERS[type].name.charAt(0), cx, cy + 1)
   }
-  // 레벨 별
+  // 레벨 표시: 업그레이드 3회까지는 별, 그 이상은 ★N
   if (level > 1) {
+    const stars = level - 1
     ctx.fillStyle = '#ffd43b'
-    ctx.font = `${Math.round(size * 0.26)}px sans-serif`
+    ctx.font = `bold ${Math.round(size * 0.26)}px sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'alphabetic'
-    ctx.fillText('★'.repeat(level - 1), cx, cy - size * 0.42)
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 3
+    const label = stars <= 3 ? '★'.repeat(stars) : `★${stars}`
+    ctx.strokeText(label, cx, cy - size * 0.42)
+    ctx.fillText(label, cx, cy - size * 0.42)
   }
 }
 

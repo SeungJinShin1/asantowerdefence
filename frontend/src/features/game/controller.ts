@@ -1,12 +1,20 @@
 /**
  * 게임 컨트롤러 — 엔진(순수 상태)과 React 사이의 다리.
  * - rAF 루프가 tick() 을 부르면 고정 타임스텝으로 엔진을 진행하고 outbox 를 비워 훅으로 넘긴다
+ * - 게임 속도(×1·×2·×4·×8)는 실시간을 시뮬레이션 시간으로 바꾸는 배율이며 엔진 규칙에는 영향이 없다
  * - HUD 는 getSnapshot()/subscribe() 로(useSyncExternalStore) 값이 바뀔 때만 다시 그린다
  * - 테스트는 tick(seconds) 를 직접 불러 결정적으로 진행시킬 수 있다
  */
 import { useSyncExternalStore } from 'react'
 
-import { SIM_DT, type TowerId } from './config/balance'
+import {
+  DEFAULT_GAME_SPEED,
+  GAME_SPEEDS,
+  type GameSpeed,
+  SIM_DT,
+  type TowerId,
+} from './config/balance'
+import type { UpgradeTrack } from './config/upgrades'
 import { WAVE_PREP_SEC } from './config/waves'
 import {
   type ActionResult,
@@ -45,8 +53,11 @@ export interface HudSnapshot {
   kills: number
   wavesCleared: number
   selectedTowerId: number | null
+  /** 선택한 타워의 업그레이드 총 횟수(패널이 바뀜을 감지하는 용도) */
+  selectedTowerLevel: number
   buildType: TowerId | null
   towerCount: number
+  speed: GameSpeed
 }
 
 export interface ControllerHooks {
@@ -61,6 +72,7 @@ export class GameController {
   hoverTile: { x: number; y: number } | null = null
   selectedTowerId: number | null = null
   buildType: TowerId | null = null
+  speed: GameSpeed = DEFAULT_GAME_SPEED
 
   private readonly listeners = new Set<() => void>()
   private readonly hooks: ControllerHooks
@@ -78,9 +90,9 @@ export class GameController {
     return this.game.state
   }
 
-  /** 실시간 elapsedSec 만큼 진행(고정 타임스텝 1/60 으로 쪼갬) */
+  /** 실시간 elapsedSec 만큼 진행(배속을 곱해 고정 타임스텝 1/60 으로 쪼갬) */
   tick(elapsedSec: number): void {
-    advance(this.game.state, this.game.ctx, elapsedSec, SIM_DT)
+    advance(this.game.state, this.game.ctx, elapsedSec * this.speed, SIM_DT)
     this.effects.update(elapsedSec)
     this.flush()
   }
@@ -114,6 +126,7 @@ export class GameController {
 
   private computeSnapshot(): HudSnapshot {
     const s = this.game.state
+    const selected = s.towers.find((t) => t.id === this.selectedTowerId)
     return {
       coins: s.coins,
       lives: s.lives,
@@ -127,9 +140,11 @@ export class GameController {
       doubleCoinLeft: Math.max(0, Math.ceil(s.doubleCoinUntil - s.time)),
       kills: s.kills,
       wavesCleared: s.wavesCleared,
-      selectedTowerId: this.selectedTowerId,
+      selectedTowerId: selected ? selected.id : null,
+      selectedTowerLevel: selected ? selected.level : 0,
       buildType: this.buildType,
       towerCount: s.towers.length,
+      speed: this.speed,
     }
   }
 
@@ -137,6 +152,12 @@ export class GameController {
 
   setHover(tile: { x: number; y: number } | null): void {
     this.hoverTile = tile
+  }
+
+  setSpeed(speed: GameSpeed): void {
+    if (!GAME_SPEEDS.includes(speed)) return
+    this.speed = speed
+    this.refresh()
   }
 
   setBuildType(type: TowerId | null): void {
@@ -163,9 +184,9 @@ export class GameController {
     return { ok: true }
   }
 
-  upgradeSelected(): ActionResult {
+  upgradeSelected(track: UpgradeTrack): ActionResult {
     if (this.selectedTowerId === null) return { ok: false, reason: '타워를 먼저 골라 주세요.' }
-    const result = upgradeTowerById(this.game.state, this.selectedTowerId)
+    const result = upgradeTowerById(this.game.state, this.selectedTowerId, track)
     this.refresh()
     return result
   }
