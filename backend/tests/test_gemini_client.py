@@ -142,3 +142,16 @@ def test_client_records_last_error_summary_and_ok_calls() -> None:
     assert client.last_error == "FakeApiError 400 INVALID_ARGUMENT"
     client.generate_text("s", [ChatTurn("user", "q")])
     assert client.diagnostics() == {"model": "test-model", "last_error": None, "ok_calls": 1}
+
+
+def test_real_sdk_client_is_kept_alive_after_gc() -> None:
+    """회귀 방지: Client 참조를 안 잡아 두면 GC 뒤 httpx 연결이 닫혀 모든 호출이 RuntimeError 가 된다."""
+    import gc
+
+    client = GoogleGeminiClient("not-a-real-key", "gemini-3.6-flash")
+    models = client._api()  # 네트워크 호출 없음(클라이언트 생성만)
+    gc.collect()
+    assert client._client is not None and client._client.models is models
+    httpx_client = getattr(getattr(client._client, "_api_client", None), "_httpx_client", None)
+    if httpx_client is not None:
+        assert httpx_client.is_closed is False

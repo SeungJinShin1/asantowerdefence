@@ -96,6 +96,9 @@ class GoogleGeminiClient:
         self._backoff = backoff_sec
         self._sleep = sleep
         self._models = models_api
+        self._client: Any | None = (
+            None  # SDK Client 를 살려 둔다(참조가 사라지면 httpx 연결이 닫힘)
+        )
         # 운영 진단용(비밀값 없음): 마지막 실패의 예외 종류·HTTP 코드·상태 문자열, 성공 횟수
         self.last_error: str | None = None
         self.ok_calls = 0
@@ -113,10 +116,12 @@ class GoogleGeminiClient:
             from google import genai
             from google.genai import types
 
-            client = genai.Client(
+            # 주의: Client 객체 참조를 반드시 보관한다. models 핸들만 두고 Client 가 GC 되면
+            # 내부 httpx 클라이언트가 닫혀 모든 호출이 RuntimeError("client has been closed")가 된다.
+            self._client = genai.Client(
                 api_key=self._api_key, http_options=types.HttpOptions(timeout=self._timeout_ms)
             )
-            self._models = client.models
+            self._models = self._client.models
         return self._models
 
     def generate_text(
