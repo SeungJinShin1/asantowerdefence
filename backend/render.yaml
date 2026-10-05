@@ -36,7 +36,7 @@ services:
       - key: ADMIN_TOKEN
         generateValue: true
       - key: TEACHER_CODE
-        sync: false # 교사 모드 코드(선생님께 알려 줄 짧은 문구). 비우면 교사 모드 꺼짐
+        sync: false # 교사 모드 코드. 설정하지 않으면 코드 기본값(asan), 빈 값으로 두면 교사 모드 꺼짐
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL

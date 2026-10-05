@@ -69,12 +69,12 @@ class SessionService:
     def create_teacher(self, code: str) -> tuple[Session, str]:
         """교사 코드가 맞으면 교사 세션을 만든다. 코드가 설정되지 않았으면 교사 모드는 없는 것(404)으로 본다.
 
-        비교는 상수 시간(hmac.compare_digest)으로 하고, 입력한 코드·정답 코드는 응답·로그에 남기지 않는다.
+        비교는 대소문자·앞뒤 공백을 무시하고 상수 시간(hmac.compare_digest)으로 하며, 입력한 코드·정답 코드는 응답·로그에 남기지 않는다.
         """
-        expected = self.settings.teacher_code.strip()
+        expected = self.settings.teacher_code.strip().casefold()
         if not expected:
             raise NotFoundError("교사 모드가 꺼져 있어요. 운영자에게 문의해 주세요.")
-        given = code.strip()
+        given = code.strip().casefold()
         if not hmac.compare_digest(given.encode("utf-8"), expected.encode("utf-8")):
             logger.warning("teacher_code_rejected")
             raise UnauthorizedError("교사 코드가 맞지 않아요.", detail="teacher_code")

@@ -67,14 +67,13 @@ def test_wrong_code_is_rejected_without_leaking_codes(teacher_client: TestClient
     assert "token" not in response.json()
 
 
-def test_code_is_case_sensitive_but_ignores_surrounding_spaces(teacher_client: TestClient) -> None:
+def test_code_ignores_case_and_surrounding_spaces(teacher_client: TestClient) -> None:
+    """말로 전해 들은 코드를 'Asan-2026' 처럼 입력해도 통과한다. 다른 글자는 여전히 거부."""
+    for code in (CODE.upper(), CODE.capitalize(), f"  {CODE} "):
+        response = teacher_client.post(f"{API}/sessions/teacher", json={"code": code})
+        assert response.status_code == 201, code
     assert (
-        teacher_client.post(f"{API}/sessions/teacher", json={"code": CODE.upper()}).status_code
-        == 401
-    )
-    assert (
-        teacher_client.post(f"{API}/sessions/teacher", json={"code": f"  {CODE} "}).status_code
-        == 201
+        teacher_client.post(f"{API}/sessions/teacher", json={"code": CODE + "x"}).status_code == 401
     )
     assert teacher_client.post(f"{API}/sessions/teacher", json={"code": ""}).status_code == 422
 
@@ -171,3 +170,28 @@ def test_teacher_code_attempts_are_rate_limited(
 
 def test_teacher_code_is_not_in_healthz(teacher_client: TestClient) -> None:
     assert CODE not in teacher_client.get("/healthz").text
+
+
+def test_default_teacher_code_is_asan_and_env_can_change_or_disable_it(
+    question_bank: QuestionBank,
+) -> None:
+    """부스 기본 코드는 asan. TEACHER_CODE 로 바꾸면 기본 코드는 통하지 않고, 빈 값이면 꺼진다."""
+    base = {"_env_file": None, "app_env": "test", "rate_limit_enabled": False}
+    default = Settings(**base)
+    assert default.teacher_code == "asan" and default.teacher_enabled
+
+    with TestClient(create_app(default, question_bank=question_bank)) as client:
+        assert client.post(f"{API}/sessions/teacher", json={"code": "Asan"}).status_code == 201
+        assert client.post(f"{API}/sessions/teacher", json={"code": "onyang"}).status_code == 401
+
+    changed = Settings(**base, teacher_code="other-code")
+    with TestClient(create_app(changed, question_bank=question_bank)) as client:
+        assert client.post(f"{API}/sessions/teacher", json={"code": "asan"}).status_code == 401
+        assert (
+            client.post(f"{API}/sessions/teacher", json={"code": "other-code"}).status_code == 201
+        )
+
+    off = Settings(**base, teacher_code="")
+    assert off.teacher_enabled is False
+    with TestClient(create_app(off, question_bank=question_bank)) as client:
+        assert client.post(f"{API}/sessions/teacher", json={"code": "asan"}).status_code == 404

@@ -27,6 +27,7 @@ def settings() -> Settings:
         admin_token=TEST_ADMIN_TOKEN,
         rate_limit_enabled=False,
         allowed_origins="http://localhost:5173,https://example.vercel.app",
+        teacher_code="",  # 운영 기본값(asan)과 무관하게, 테스트는 필요한 곳에서만 교사 모드를 켠다
     )
 
 

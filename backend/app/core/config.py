@@ -35,8 +35,9 @@ class Settings(BaseSettings):
     session_ttl_hours: int = 3
     admin_token: str = ""
     # 교사 코드: 타이틀의 운영자 메뉴에서 입력하면 모든 단계가 열린 교사 세션을 만든다.
-    # 비어 있으면 교사 모드는 꺼진다. 프론트 번들·응답·로그에 넣지 않는다.
-    teacher_code: str = ""
+    # 기본값은 부스용 코드 "asan"(대소문자 무시). TEACHER_CODE 로 바꿀 수 있고, 빈 값으로 두면 교사 모드가 꺼진다.
+    # 프론트 번들·응답·로그에는 넣지 않는다. 교사 모드는 순위에서 제외되므로 코드가 알려져도 단계 구경만 가능하다.
+    teacher_code: str = "asan"
 
     gemini_api_key: str = ""
     # 기본 모델. 운영에서 바꿀 때는 코드가 아니라 GEMINI_MODEL 환경변수로 덮어쓴다.

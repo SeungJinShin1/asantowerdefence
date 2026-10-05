@@ -34,7 +34,7 @@ Base URL: `{VITE_API_BASE_URL}` = `https://<render-app>.onrender.com/api/v1`
 
 ### POST /sessions/teacher
 교사 모드 세션 생성(운영자 메뉴). 요청 `{ "code": "<교사 코드>" }` → 201, 본문은 `POST /sessions` 와 같고 `"teacher": true` (일반 세션은 `false`).
-- 서버 환경변수 `TEACHER_CODE` 와 상수 시간 비교(앞뒤 공백 무시, 대소문자 구분). 비어 있으면 404 `NOT_FOUND`(교사 모드 꺼짐), 틀리면 401 `UNAUTHORIZED`("교사 코드가 맞지 않아요."). IP당 5/분. 코드는 응답·로그에 남기지 않는다.
+- 서버 설정 `TEACHER_CODE`(기본값 `asan`)와 상수 시간 비교(앞뒤 공백·대소문자 무시). 빈 값이면 404 `NOT_FOUND`(교사 모드 꺼짐), 틀리면 401 `UNAUTHORIZED`("교사 코드가 맞지 않아요."). IP당 5/분. 코드는 응답·로그에 남기지 않는다.
 - 교사 세션(`isTeacher`): 화면이 모든 단계를 연다. `POST /leaderboard` 는 409, `finish` 의 남은 코인이 상한을 넘으면 거부 대신 상한으로 깎아 계산한다(검수용 코인 받기 때문).
 
 ### POST /sessions/{sessionId}/stages/{stageOrder}/start   (X-Session-Token)
