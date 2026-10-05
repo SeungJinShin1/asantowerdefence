@@ -219,7 +219,7 @@ describe('projectiles', () => {
     for (let i = 0; i < 300 && p.alive; i += 1)
       hits.push(...stepProjectile(p, [boss], line, 0, 1 / 60, 100))
     expect(hits[0]!.damage).toBe(145) // 30 × 1.5 + 100
-    expect(boss.hp).toBe(400 - 145)
+    expect(boss.hp).toBe(boss.maxHp - 145)
 
     const slime = enemyAt(2, 5.5)
     const p2 = createProjectile(11, geo, slime, line)

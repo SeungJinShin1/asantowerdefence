@@ -10,10 +10,26 @@ export const CANVAS_WIDTH = TILE_PX * GRID_COLS // 1024
 export const CANVAS_HEIGHT = TILE_PX * GRID_ROWS // 576
 
 export const SIM_DT = 1 / 60
-export const START_COINS = 100
+export const START_COINS = 150
 export const LEARN_BONUS = 50
 export const MAX_LIVES = 10
-export const HP_MULT_PER_STAGE = 0.25 // 몬스터 체력 배율 = 1 + 0.25 × (stage − 1)
+/**
+ * 단계별 난이도 배율(인덱스 = stage − 1). 1단계는 온천 타워 하나뿐인 첫 판이라 확실히 쉽게,
+ * 5단계는 "깰듯 말듯"하게. 보스는 일반 몬스터보다 더 가파르게 약하게 시작한다.
+ */
+export const STAGE_SCALE = {
+  /** 일반 몬스터 체력 */
+  hp: [1.0, 1.15, 1.3, 1.45, 1.6],
+  /** 보스 체력 */
+  bossHp: [0.55, 0.7, 0.85, 1.0, 1.15],
+  /** 웨이브 몬스터 수 */
+  count: [0.6, 0.8, 0.9, 1.0, 1.0],
+} as const
+
+export function stageScale(stage: number): { hp: number; bossHp: number; count: number } {
+  const i = Math.min(Math.max(Math.round(stage) - 1, 0), STAGE_SCALE.hp.length - 1)
+  return { hp: STAGE_SCALE.hp[i]!, bossHp: STAGE_SCALE.bossHp[i]!, count: STAGE_SCALE.count[i]! }
+}
 export const GOLDEN_SLIME_CHANCE = 0.6
 export const WAVES_PER_STAGE = { full: 5, booth: 3 } as const
 

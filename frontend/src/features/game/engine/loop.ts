@@ -7,7 +7,14 @@
  */
 import { LEARN_BONUS, MAX_LIVES, START_COINS } from '../config/balance'
 import { type MapDef, mapForTopic } from '../config/maps'
-import { QUIZ_PACING, WAVE_PREP_SEC, type WaveDef, quizMarksFor, wavesFor } from '../config/waves'
+import {
+  QUIZ_PACING,
+  WAVE_PREP_SEC,
+  type WaveDef,
+  quizMarksFor,
+  waveForStage,
+  wavesFor,
+} from '../config/waves'
 import { baseDamageOf, createEnemy, killCoins, speedOf, vanishesAtBase } from './enemy'
 import { grantCoins, grantFullHealthBonus, grantWaveClearBonus, startDoubleCoin } from './events'
 import { type PathData, buildPath, positionAt, reachedBase } from './path'
@@ -92,7 +99,7 @@ export const nextId = (state: GameState): number => state.nextId++
 export function startNextWave(state: GameState, ctx: GameContext): void {
   if (state.status !== 'playing' || state.wave >= state.wavesPerStage) return
   state.wave += 1
-  const def = ctx.waves[state.wave - 1]!
+  const def = waveForStage(ctx.waves[state.wave - 1]!, state.stage) // 단계별 수량 배율
   state.spawnQueue = buildSpawnQueue(def, ctx.rng)
   state.wavePhase = 'spawning'
   state.phaseTimer = 0

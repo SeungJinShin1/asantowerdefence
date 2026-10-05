@@ -1,12 +1,15 @@
 /**
- * 밸런스 헤드리스 시뮬레이션(3.11): 정답률이 다른 가상 플레이어가 부스 모드 5스테이지를 돌린다.
- * 숫자를 바꾸면 이 표(콘솔)로 "깰듯 말듯" 난이도와 소요 시간을 확인한다. 단언은 느슨하게(방향만) 둔다.
- *  - 잘 맞히는 아이(90%)는 대부분 깨고, 많이 틀리는 아이(50%)는 후반 스테이지에서 지기도 해야 한다.
+ * 밸런스 헤드리스 시뮬레이션(3.11): 가상 플레이어가 부스 모드 5스테이지를 돌린다.
+ * 숫자를 바꾸면 이 표(콘솔)로 "1단계는 쉽게, 5단계는 깰듯 말듯" 과 소요 시간을 확인한다.
+ *
+ * 플레이어 두 종류:
+ *  - 초보(novice): 처음 하는 아이. 4초에 한 번만 결정, 길 옆 아무 데나(상위 절반) 세움, 타워 수 적음, 업그레이드 가끔
+ *  - 고수(expert): 1초마다 결정, 경로를 가장 많이 덮는 자리, 코인을 남김없이 씀
+ * 단언은 방향만 본다: 초보가 절반을 틀려도 1단계는 깨고, 고수가 잘 맞히면 전부 깬다.
  */
 import { describe, expect, it } from 'vitest'
 
 import { SIM_DT, TOWERS, TOWER_ORDER, type TowerId } from '../config/balance'
-import { EVENT_PARAMS } from '../config/events'
 import { applyQuizOutcome, placeTower, resumeAfterQuiz, upgradeTowerById } from './actions'
 import { type Game, createGame, drainOutbox, step } from './loop'
 import { positionAt } from './path'
@@ -18,6 +21,8 @@ const TOPICS = ['onyang', 'maengsaseong', 'yisunsin', 'gongseri', 'seonjang']
 const BASE_COINS: Record<QuizTriggerKind, number> = { normal: 30, emergency: 50, rush: 40 }
 const MAX_SIM_SEC = 900
 
+type Skill = 'novice' | 'expert'
+
 interface Outcome {
   won: boolean
   lives: number
@@ -27,11 +32,17 @@ interface Outcome {
   upgrades: number
 }
 
-/** 경로를 가장 많이 덮는 순서로 건설 후보 타일을 고른다(아이가 길 옆에 세우는 것을 흉내) */
-function rankTiles(g: Game): { x: number; y: number }[] {
+interface RankedTile {
+  x: number
+  y: number
+  score: number
+}
+
+/** 경로를 많이 덮는 순서로 건설 후보 타일을 매긴다 */
+function rankTiles(g: Game): RankedTile[] {
   const samples: { x: number; y: number }[] = []
   for (let d = 0; d < g.ctx.path.totalLength; d += 0.25) samples.push(positionAt(g.ctx.path, d))
-  const tiles: { x: number; y: number; score: number }[] = []
+  const tiles: RankedTile[] = []
   for (let y = 0; y < g.ctx.map.rows; y += 1) {
     for (let x = 0; x < g.ctx.map.cols; x += 1) {
       if (!canBuildAt(g.ctx.map, g.ctx.path, [], { x, y })) continue
@@ -45,7 +56,7 @@ function rankTiles(g: Game): { x: number; y: number }[] {
   return tiles
 }
 
-function simulate(stage: number, accuracy: number, seed: number): Outcome {
+function simulate(stage: number, accuracy: number, seed: number, skill: Skill): Outcome {
   const g = createGame({
     stage,
     topicId: TOPICS[stage - 1]!,
@@ -54,12 +65,44 @@ function simulate(stage: number, accuracy: number, seed: number): Outcome {
     learnBonus: true,
   })
   const prng = createRng(seed * 7 + 1)
-  const tiles = rankTiles(g)
+  const ranked = rankTiles(g)
+  const best = ranked[0]?.score ?? 1
+  // 초보는 "길 옆이면 아무 데나": 상위 절반 중 무작위. 고수는 항상 최선의 자리
+  const candidates = skill === 'expert' ? ranked : ranked.filter((t) => t.score >= best * 0.5)
+  const decisionEvery = skill === 'expert' ? 1.0 : 4.0
+  const maxTowers = skill === 'expert' ? Number.POSITIVE_INFINITY : 3 + stage
+  const fastChance = skill === 'expert' ? 0.5 : 0.3
+  const unlocked = TOWER_ORDER.filter((t) => isTowerUnlocked(t, stage))
+
   let combo = 0
   let quizzes = 0
   let upgrades = 0
   let decisionTimer = 0
-  const unlocked = TOWER_ORDER.filter((t) => isTowerUnlocked(t, stage))
+
+  const pickSpot = () => {
+    const free = candidates.filter((t) => canBuildAt(g.ctx.map, g.ctx.path, g.state.towers, t))
+    if (free.length === 0) return null
+    return skill === 'expert' ? free[0]! : free[Math.floor(prng.next() * free.length)]!
+  }
+  const pickTower = (): TowerId | undefined => {
+    const affordable = unlocked.filter((t) => g.state.coins >= TOWERS[t].cost)
+    if (affordable.length === 0) return undefined
+    if (skill === 'expert') return affordable[affordable.length - 1]
+    // 초보: 60% 가장 싼 것, 40% 아무거나
+    return prng.next() < 0.6
+      ? affordable[0]
+      : affordable[Math.floor(prng.next() * affordable.length)]
+  }
+  const tryUpgrade = () => {
+    const options = g.state.towers.flatMap((tower) =>
+      availableTracks(tower.type)
+        .map((track) => ({ tower, track, cost: upgradeCost(tower.type, tower.upgrades, track) }))
+        .filter((o) => o.cost !== null && o.cost <= g.state.coins),
+    )
+    if (options.length === 0) return
+    const pick = options[Math.floor(prng.next() * options.length)]!
+    if (upgradeTowerById(g.state, pick.tower.id, pick.track).ok) upgrades += 1
+  }
 
   while (g.state.status === 'playing' && g.state.time < MAX_SIM_SEC) {
     drainOutbox(g.state)
@@ -70,7 +113,7 @@ function simulate(stage: number, accuracy: number, seed: number): Outcome {
         const correct = prng.next() < accuracy
         combo = correct ? combo + 1 : 0
         const mult = combo <= 1 ? 1 : Math.min(combo, 3)
-        const fast = prng.next() < 0.5 ? 10 : 0
+        const fast = prng.next() < fastChance ? 10 : 0
         const double = g.state.doubleCoinUntil > g.state.time ? 2 : 1
         const coins = correct ? (BASE_COINS[kind] * mult + fast) * double : 0
         applyQuizOutcome(g.state, { kind, correct, coins, combo })
@@ -81,31 +124,14 @@ function simulate(stage: number, accuracy: number, seed: number): Outcome {
     }
 
     decisionTimer += 0.5
-    if (decisionTimer >= 1.0) {
+    if (decisionTimer >= decisionEvery) {
       decisionTimer = 0
-      // 1) 새 타워: 해금된 것 중 가장 비싼 것부터, 살 수 있으면 짓는다
-      const affordable = [...unlocked].reverse().find((t) => g.state.coins >= TOWERS[t].cost) as
-        TowerId | undefined
-      const spot = tiles.find((t) => canBuildAt(g.ctx.map, g.ctx.path, g.state.towers, t))
-      const wantsNew = g.state.towers.length < 3 + stage || prng.next() < 0.4
-      if (affordable && spot && wantsNew) {
-        placeTower(g.state, g.ctx, affordable, spot)
-      } else {
-        // 2) 업그레이드: 아무 타워의 아무 옵션이나 살 수 있는 것 하나
-        const options = g.state.towers.flatMap((tower) =>
-          availableTracks(tower.type)
-            .map((track) => ({
-              tower,
-              track,
-              cost: upgradeCost(tower.type, tower.upgrades, track),
-            }))
-            .filter((o) => o.cost !== null && o.cost <= g.state.coins),
-        )
-        if (options.length > 0) {
-          const pick = options[Math.floor(prng.next() * options.length)]!
-          if (upgradeTowerById(g.state, pick.tower.id, pick.track).ok) upgrades += 1
-        }
-      }
+      const type = pickTower()
+      const spot = pickSpot()
+      const wantsNew =
+        g.state.towers.length < maxTowers && (skill === 'expert' || prng.next() < 0.7)
+      if (type && spot && wantsNew) placeTower(g.state, g.ctx, type, spot)
+      else if (skill === 'expert' || prng.next() < 0.6) tryUpgrade()
     }
     for (let i = 0; i < 30; i += 1) step(g.state, g.ctx, SIM_DT)
   }
@@ -122,37 +148,47 @@ function simulate(stage: number, accuracy: number, seed: number): Outcome {
 const SEEDS = [1, 2, 3, 4]
 const PROFILES = [0.5, 0.7, 0.9]
 
-describe('밸런스 시뮬레이션(부스 모드, 가상 플레이어)', () => {
-  it('정답률별 스테이지 승률 표를 출력하고, 방향이 맞는지만 확인한다', () => {
-    const rows: string[] = []
-    const winRate: Record<string, number> = {}
-    for (const accuracy of PROFILES) {
-      for (let stage = 1; stage <= 5; stage += 1) {
-        const results = SEEDS.map((seed) => simulate(stage, accuracy, seed))
-        const wins = results.filter((r) => r.won).length
-        const avg = (f: (r: Outcome) => number) =>
-          results.reduce((n, r) => n + f(r), 0) / results.length
-        winRate[`${accuracy}-${stage}`] = wins / results.length
-        rows.push(
-          `정답률 ${Math.round(accuracy * 100)}% · ${stage}단계 → 승 ${wins}/${results.length}` +
-            ` · 남은 체력 ${avg((r) => r.lives).toFixed(1)}` +
-            ` · 시뮬 ${avg((r) => r.simSec).toFixed(0)}초` +
-            ` · 퀴즈 ${avg((r) => r.quizzes).toFixed(1)}` +
-            ` · 타워 ${avg((r) => r.towers).toFixed(1)} · 업글 ${avg((r) => r.upgrades).toFixed(1)}`,
-        )
-      }
+function table(skill: Skill): { rows: string[]; winRate: Record<string, number> } {
+  const rows: string[] = []
+  const winRate: Record<string, number> = {}
+  for (const accuracy of PROFILES) {
+    for (let stage = 1; stage <= 5; stage += 1) {
+      const results = SEEDS.map((seed) => simulate(stage, accuracy, seed, skill))
+      const wins = results.filter((r) => r.won).length
+      const avg = (f: (r: Outcome) => number) =>
+        results.reduce((n, r) => n + f(r), 0) / results.length
+      winRate[`${accuracy}-${stage}`] = wins / results.length
+      rows.push(
+        `정답률 ${Math.round(accuracy * 100)}% · ${stage}단계 → 승 ${wins}/${results.length}` +
+          ` · 남은 체력 ${avg((r) => r.lives).toFixed(1)}` +
+          ` · 시뮬 ${avg((r) => r.simSec).toFixed(0)}초` +
+          ` · 퀴즈 ${avg((r) => r.quizzes).toFixed(1)}` +
+          ` · 타워 ${avg((r) => r.towers).toFixed(1)} · 업글 ${avg((r) => r.upgrades).toFixed(1)}`,
+      )
     }
-    console.info(`\n[밸런스 표]\n${rows.join('\n')}\n`)
+  }
+  return { rows, winRate }
+}
 
-    // 잘 맞히면 깬다(1~3단계는 전부, 전체 평균 80% 이상)
-    expect(winRate['0.9-1']).toBe(1)
-    expect(winRate['0.9-2']).toBe(1)
+describe('밸런스 시뮬레이션(부스 모드, 가상 플레이어)', () => {
+  it('초보: 절반을 틀려도 1~2단계는 깨고, 70%면 3단계까지 안정적으로 깬다', () => {
+    const { rows, winRate } = table('novice')
+    console.info(`\n[밸런스 표 — 초보]\n${rows.join('\n')}\n`)
+    expect(winRate['0.5-1']).toBeGreaterThanOrEqual(0.75)
+    expect(winRate['0.5-2']).toBeGreaterThanOrEqual(0.5)
+    expect(winRate['0.7-1']).toBe(1)
+    expect(winRate['0.7-2']).toBeGreaterThanOrEqual(0.75)
+    expect(winRate['0.7-3']).toBeGreaterThanOrEqual(0.75)
+    // 후반은 초보에게 긴장감이 있어야 한다(절반 틀리면 5단계는 대체로 진다)
+    expect(winRate['0.5-5']).toBeLessThanOrEqual(0.5)
+    // 잘 맞히는 초보는 5단계도 절반 이상 깬다(너무 어렵지 않게)
+    expect(winRate['0.9-5']).toBeGreaterThanOrEqual(0.5)
+  }, 120_000)
+
+  it('고수: 잘 맞히면 전부 깬다', () => {
+    const { rows, winRate } = table('expert')
+    console.info(`\n[밸런스 표 — 고수]\n${rows.join('\n')}\n`)
     const goodAll = [1, 2, 3, 4, 5].reduce((n, s) => n + winRate[`0.9-${s}`]!, 0) / 5
-    expect(goodAll).toBeGreaterThanOrEqual(0.8)
-    // 많이 틀리면 후반은 질 수도 있다(4~5단계 평균 승률 80% 이하)
-    const weakLate = (winRate['0.5-4']! + winRate['0.5-5']!) / 2
-    expect(weakLate).toBeLessThanOrEqual(0.8)
-    // 황금 슬라임 처치 보너스 등 이벤트 수치가 바뀌면 이 표를 다시 본다
-    expect(EVENT_PARAMS.WAVE_CLEAR_BONUS.perWave).toBe(20)
-  }, 60_000)
+    expect(goodAll).toBeGreaterThanOrEqual(0.9)
+  }, 120_000)
 })

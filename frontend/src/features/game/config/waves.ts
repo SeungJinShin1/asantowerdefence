@@ -4,7 +4,7 @@
  * 퀴즈는 시간이 아니라 "몬스터가 몇 마리 나왔나"로 낸다 → 몬스터 수와 문제 수가 비례하고 초반에도 바로 나온다.
  * 보스는 마지막 그룹이 모두 나온 뒤 BOSS_DELAY_SEC 뒤에 등장하며, 그 직전에 긴급 퀴즈가 뜬다.
  */
-import type { EnemyId } from './balance'
+import { type EnemyId, stageScale } from './balance'
 
 export interface SpawnGroup {
   enemy: EnemyId
@@ -92,6 +92,22 @@ export function wavesFor(wavesPerStage: number): readonly WaveDef[] {
 export function totalEnemies(wave: WaveDef): number {
   return wave.groups.reduce((n, grp) => n + grp.count, 0)
 }
+
+/** 그룹 수량에 배율을 곱한 새 웨이브(최소 1마리) */
+export function scaleWave(wave: WaveDef, scale: number): WaveDef {
+  if (scale === 1) return wave
+  return {
+    ...wave,
+    groups: wave.groups.map((grp) => ({
+      ...grp,
+      count: Math.max(1, Math.round(grp.count * scale)),
+    })),
+  }
+}
+
+/** 단계별 몬스터 수 배율(STAGE_SCALE.count)을 적용한 웨이브 */
+export const waveForStage = (wave: WaveDef, stage: number): WaveDef =>
+  scaleWave(wave, stageScale(stage).count)
 
 // ---------- 퀴즈 페이싱 ----------
 

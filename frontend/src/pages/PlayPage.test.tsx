@@ -94,7 +94,7 @@ describe('PlayPage — 웨이브 1 클리어 시나리오', () => {
   it('스테이지를 시작하면 HUD 가 보이고, 준비 시간 뒤 웨이브 1 이 시작된다', async () => {
     const c = await renderPlay()
     expect(api.startStage).toHaveBeenCalledWith({ sessionId: 's_1', token: 't' }, 1, false)
-    expect(screen.getByLabelText(/코인 100/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/코인 150/)).toBeInTheDocument()
     expect(screen.getByRole('img', { name: '타워디펜스 게임 화면' })).toBeInTheDocument()
 
     tick(c, 3.2)
@@ -123,12 +123,14 @@ describe('PlayPage — 웨이브 1 클리어 시나리오', () => {
       '업그레이드 0/6',
     )
     await userEvent.click(screen.getByRole('button', { name: '위력 업그레이드 30코인' }))
-    expect(c.state.coins).toBe(20)
+    expect(c.state.coins).toBe(70)
     expect(c.state.towers[0]!.upgrades.power).toBe(1)
     expect(screen.getByRole('region', { name: '타워 업그레이드' })).toHaveTextContent(
       '업그레이드 1/6',
     )
-    expect(screen.getByRole('button', { name: '위력 업그레이드 45코인' })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: '위력 업그레이드 45코인' }))
+    expect(c.state.coins).toBe(25)
+    expect(screen.getByRole('button', { name: '위력 업그레이드 60코인' })).toBeDisabled()
   })
 
   it('타워를 고르고 타일을 클릭하면 코인이 줄고, 웨이브를 모두 처치하면 WAVE_CLEARED 를 보고한다', async () => {
@@ -137,8 +139,8 @@ describe('PlayPage — 웨이브 1 클리어 시나리오', () => {
     act(() => {
       c.handleTileClick({ x: 5, y: 5 })
     })
-    expect(c.state.coins).toBe(50)
-    expect(screen.getByLabelText(/코인 50/)).toBeInTheDocument()
+    expect(c.state.coins).toBe(100)
+    expect(screen.getByLabelText(/코인 100/)).toBeInTheDocument()
 
     tick(c, 3.2) // 웨이브 1 시작 → 시작 퀴즈로 멈춤
     expect(c.state.pendingQuiz).toBe('normal')
@@ -146,7 +148,7 @@ describe('PlayPage — 웨이브 1 클리어 시나리오', () => {
       c.state.quizMarks = [] // 이 시나리오는 퀴즈 없이 웨이브만 본다
       c.resumeQuiz()
     })
-    tick(c, 6) // ×2 배속: 시뮬 12초 → 13마리 모두 스폰(마지막 11.2초)
+    tick(c, 4) // ×2 배속: 시뮬 8초 → 1단계 8마리 모두 스폰(마지막 6.6초)
     expect(c.state.wavePhase).toBe('fighting')
     act(() => {
       for (const e of c.state.enemies) {

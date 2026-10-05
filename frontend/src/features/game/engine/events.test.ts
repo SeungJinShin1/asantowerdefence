@@ -41,14 +41,14 @@ describe('코인 이벤트', () => {
     s.time = 20
     expect(coinMultiplier(s)).toBe(1)
     expect(grantCoins(s, 5)).toBe(5)
-    expect(s.coins).toBe(115)
+    expect(s.coins).toBe(165) // 시작 150 + 10 + 5
   })
 
   it('웨이브 보너스 +20 × 웨이브 번호', () => {
     expect(waveClearBonus(3)).toBe(60)
     const s = fresh()
     expect(grantWaveClearBonus(s, 2)).toBe(40)
-    expect(s.coins).toBe(140)
+    expect(s.coins).toBe(190)
   })
 
   it('콤보 5 마일스톤 +100 은 스테이지당 1회', () => {
@@ -56,7 +56,7 @@ describe('코인 이벤트', () => {
     expect(checkComboMilestone(s, 4)).toBe(0)
     expect(checkComboMilestone(s, 5)).toBe(100)
     expect(checkComboMilestone(s, 6)).toBe(0)
-    expect(s.coins).toBe(200)
+    expect(s.coins).toBe(250)
   })
 
   it('긴급 퀴즈 보상과 만피 보너스', () => {

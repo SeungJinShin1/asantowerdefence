@@ -11,10 +11,13 @@ import {
 } from './enemy'
 
 describe('enemy', () => {
-  it('스테이지 체력 배율 1 + 0.25 × (stage − 1)', () => {
-    expect([1, 2, 3, 5].map(stageHpMultiplier)).toEqual([1, 1.25, 1.5, 2])
-    expect(createEnemy(1, 'slime', 3, 0).hp).toBe(60)
-    expect(createEnemy(1, 'boss_final', 5, 0).maxHp).toBe(1800)
+  it('스테이지 체력 배율은 STAGE_SCALE 표(일반·보스 따로), 1단계가 가장 약하다', () => {
+    expect([1, 2, 3, 5].map((s) => stageHpMultiplier(s))).toEqual([1, 1.15, 1.3, 1.6])
+    expect([1, 3, 5].map((s) => stageHpMultiplier(s, true))).toEqual([0.55, 0.85, 1.15])
+    expect(createEnemy(1, 'slime', 3, 0).hp).toBe(52)
+    expect(createEnemy(2, 'boss_mid', 1, 0).hp).toBe(220)
+    expect(createEnemy(3, 'boss_final', 5, 0).hp).toBe(1035)
+    expect(createEnemy(1, 'boss_final', 5, 0).maxHp).toBe(1035)
     expect(createEnemy(1, 'boss_mid', 1, 0).isBoss).toBe(true)
     expect(createEnemy(1, 'bat', 1, 0).isBoss).toBe(false)
   })

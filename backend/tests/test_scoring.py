@@ -77,13 +77,13 @@ def _check(
 # fmt: off
 _SPEC_CONSTANTS: dict[str, Any] = {  # 스펙 1.4 상수 표(이름·값) 그대로
     "WAVES_PER_STAGE_BOOTH": 3, "WAVES_PER_STAGE_FULL": 5, "STAGE_COUNT": 5, "MAX_LIVES": 10,
-    "START_COINS": 100, "LEARN_BONUS": 50, "QUIZ_TIME_LIMIT_SEC": 15, "QUIZ_BATCH_NORMAL": 12,
+    "START_COINS": 150, "LEARN_BONUS": 50, "QUIZ_TIME_LIMIT_SEC": 15, "QUIZ_BATCH_NORMAL": 12,
     "QUIZ_BATCH_EMERGENCY": 2, "QUIZ_BATCH_RUSH": 3, "QUIZ_MORE_DEFAULT": 5, "QUIZ_MORE_MAX": 10,
     "MAX_QUIZZES_PER_SESSION": 200, "BASE_COINS": {"normal": 30, "emergency": 50, "rush": 40},
     "FAST_BONUS": 10, "FAST_ANSWER_MS": 5000, "DOUBLE_COIN_MULT": 2, "DOUBLE_COIN_SECONDS": 20,
     "COMBO_MULT_MAX": 3, "SCORE_PER_CORRECT": 100, "SCORE_PER_COMBO_MAX": 50,
     "SCORE_PER_WAVE": 150, "SCORE_PER_STAGE": 500, "SCORE_PER_LIFE": 30, "SCORE_COINS_CAP": 500,
-    "MAX_CLIENT_BONUS_PER_STAGE": 1100, "MAX_CLIENT_BONUS_PER_WAVE": 1000,
+    "MAX_CLIENT_BONUS_PER_STAGE": 1200, "MAX_CLIENT_BONUS_PER_WAVE": 1000,
 }
 # fmt: on
 
@@ -245,13 +245,13 @@ def test_validate_finish_rejects_lives_out_of_range(lives: int) -> None:
 
 
 def test_validate_finish_rejects_coins_over_cap() -> None:
-    """coins_from_quiz 0, 스테이지 1 시작, 웨이브 0 → 상한 1100: 1100 통과, 1101 거부."""
-    ok = _report(stages_cleared=0, waves_cleared=0, lives_left_at_end=10, coins_left_at_end=1100)
-    bad = ok.model_copy(update={"coins_left_at_end": 1101})
+    """coins_from_quiz 0, 스테이지 1 시작, 웨이브 0 → 상한 1200: 1200 통과, 1201 거부."""
+    ok = _report(stages_cleared=0, waves_cleared=0, lives_left_at_end=10, coins_left_at_end=1200)
+    bad = ok.model_copy(update={"coins_left_at_end": 1201})
     assert _check(ok, started=1, quiz_coins=0) == []
     reasons = _check(bad, started=1, quiz_coins=0)
     assert len(reasons) == 1
-    assert "coins_left_at_end" in reasons[0] and "1101" in reasons[0] and "1100" in reasons[0]
+    assert "coins_left_at_end" in reasons[0] and "1201" in reasons[0] and "1200" in reasons[0]
 
 
 def test_validate_finish_coin_cap_counts_quiz_coins_and_waves() -> None:

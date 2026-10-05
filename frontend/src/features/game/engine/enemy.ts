@@ -1,14 +1,16 @@
 /** 몬스터 규칙 — docs/02 §2(체력 배율)·§5(종류별 특징). 순수 함수. */
-import { ENEMIES, type EnemyId, HP_MULT_PER_STAGE } from '../config/balance'
+import { ENEMIES, type EnemyId, stageScale } from '../config/balance'
 import type { EnemyState } from './state'
 
-export function stageHpMultiplier(stage: number): number {
-  return 1 + HP_MULT_PER_STAGE * Math.max(stage - 1, 0)
+/** 단계별 체력 배율(config/balance.STAGE_SCALE). 보스는 따로 */
+export function stageHpMultiplier(stage: number, boss = false): number {
+  const scale = stageScale(stage)
+  return boss ? scale.bossHp : scale.hp
 }
 
 export function createEnemy(id: number, type: EnemyId, stage: number, time: number): EnemyState {
   const spec = ENEMIES[type]
-  const hp = Math.round(spec.hp * stageHpMultiplier(stage))
+  const hp = Math.round(spec.hp * stageHpMultiplier(stage, spec.boss !== undefined))
   return {
     id,
     type,

@@ -63,14 +63,14 @@ function killAll(g: Game): void {
 }
 
 describe('createGame', () => {
-  it('시작 코인 100(+학습 50), 체력 10, 보조 출제 대기 부스 30초/전체 35초', () => {
+  it('시작 코인 150(+학습 50), 체력 10, 보조 출제 대기 부스 30초/전체 35초', () => {
     const g = game()
-    expect(g.state.coins).toBe(100)
+    expect(g.state.coins).toBe(150)
     expect(g.state.lives).toBe(10)
     expect(g.state.wave).toBe(0)
     expect(g.state.wavePhase).toBe('prep')
     expect(g.state.quizFallbackSec).toBe(30)
-    expect(game({ learnBonus: true }).state.coins).toBe(150)
+    expect(game({ learnBonus: true }).state.coins).toBe(200)
     expect(game({ wavesPerStage: 5 }).state.quizFallbackSec).toBe(35)
   })
 })
@@ -117,15 +117,15 @@ describe('웨이브 진행', () => {
   it('웨이브를 모두 처치하면 보너스 +20×웨이브와 함께 다음 준비 단계로', () => {
     const g = game()
     startWave(g)
-    runResuming(g, 12) // 13마리 모두 스폰(마지막 11.2초)
+    runResuming(g, 8) // 1단계(×0.6): 슬라임 5 + 박쥐 3 = 8마리, 마지막 스폰 6.6초
     expect(g.state.wavePhase).toBe('fighting')
-    expect(g.state.enemies).toHaveLength(13)
+    expect(g.state.enemies).toHaveLength(8)
     const before = g.state.coins
     killAll(g)
     run(g, SIM_DT)
     expect(g.state.wavesCleared).toBe(1)
     expect(g.state.wavePhase).toBe('prep')
-    const killCoins = 8 * ENEMIES.slime.coins + 5 * ENEMIES.bat.coins
+    const killCoins = 5 * ENEMIES.slime.coins + 3 * ENEMIES.bat.coins
     expect(g.state.coins).toBe(before + killCoins + 20)
     expect(events(g, 'wave_cleared')[0]).toMatchObject({ wave: 1, bonus: 20 })
   })
@@ -152,24 +152,24 @@ describe('웨이브 진행', () => {
 })
 
 describe('퀴즈 페이싱 — 몬스터 수에 맞춰 출제', () => {
-  it('웨이브 1: 시작 퀴즈 → 6마리째가 나오면 두 번째 퀴즈. 퀴즈 중에는 시간이 멈춘다', () => {
+  it('웨이브 1(1단계 8마리): 시작 퀴즈 → 4마리째가 나오면 두 번째 퀴즈. 퀴즈 중에는 시간이 멈춘다', () => {
     const g = game()
     startNextWave(g.state, g.ctx)
     expect(g.state.pendingQuiz).toBe('normal')
-    expect(g.state.quizMarks).toEqual([6])
+    expect(g.state.quizMarks).toEqual([4])
     expect(events(g, 'quiz_requested')[0]).toMatchObject({ kind: 'normal', count: 1 })
     const t = g.state.time
     run(g, 5)
     expect(g.state.time).toBe(t)
 
     resumeAfterQuiz(g.state)
-    run(g, 4.9) // 5마리(0~4초)
+    run(g, 2.9) // 3마리(0~2초)
     expect(g.state.paused).toBe(false)
-    expect(g.state.spawnedThisWave).toBe(5)
-    run(g, 0.2) // 6마리째(5.0초)
+    expect(g.state.spawnedThisWave).toBe(3)
+    run(g, 0.2) // 4마리째(3.0초)
     expect(g.state.paused).toBe(true)
     expect(g.state.pendingQuiz).toBe('normal')
-    expect(g.state.spawnedThisWave).toBe(6)
+    expect(g.state.spawnedThisWave).toBe(4)
     expect(g.state.quizMarks).toEqual([])
     expect(g.state.quizzesAsked).toBe(2)
     resumeAfterQuiz(g.state)
@@ -250,11 +250,11 @@ describe('퀴즈 결과 반영', () => {
   it('서버 코인을 그대로 더하고 콤보 5 에 +100', () => {
     const g = game()
     applyQuizOutcome(g.state, { kind: 'normal', correct: true, coins: 70, combo: 2 })
-    expect(g.state.coins).toBe(170)
+    expect(g.state.coins).toBe(220)
     applyQuizOutcome(g.state, { kind: 'normal', correct: true, coins: 90, combo: 5 })
-    expect(g.state.coins).toBe(170 + 90 + 100)
+    expect(g.state.coins).toBe(220 + 90 + 100)
     applyQuizOutcome(g.state, { kind: 'normal', correct: false, coins: 0, combo: 0 })
-    expect(g.state.coins).toBe(360)
+    expect(g.state.coins).toBe(410)
   })
 })
 
@@ -267,8 +267,9 @@ describe('건설·업그레이드·판매', () => {
     })
     expect(placeTower(g.state, g.ctx, 'onsen', { x: 1, y: 4 }).ok).toBe(false) // 경로
     expect(placeTower(g.state, g.ctx, 'onsen', { x: 5, y: 5 })).toEqual({ ok: true })
-    expect(g.state.coins).toBe(50)
+    expect(g.state.coins).toBe(100)
     expect(placeTower(g.state, g.ctx, 'onsen', { x: 6, y: 5 })).toEqual({ ok: true })
+    expect(placeTower(g.state, g.ctx, 'onsen', { x: 5, y: 6 })).toEqual({ ok: true })
     expect(placeTower(g.state, g.ctx, 'onsen', { x: 8, y: 5 })).toEqual({
       ok: false,
       reason: '코인이 부족해요.',
@@ -291,7 +292,7 @@ describe('건설·업그레이드·판매', () => {
 
     expect(sellTowerById(g.state, id)).toEqual({ ok: true })
     expect(g.state.coins).toBe(48) // (50+30)×0.6
-    expect(g.state.towers).toHaveLength(1)
+    expect(g.state.towers).toHaveLength(2)
   })
 
   it('타워가 사거리 안의 몬스터를 처치하면 코인이 들어온다', () => {
@@ -304,7 +305,7 @@ describe('건설·업그레이드·판매', () => {
     expect(killed.length).toBeGreaterThan(0)
     expect(g.state.kills).toBe(killed.length)
     const earned = killed.reduce((n, e) => n + (e.type === 'enemy_killed' ? e.coins : 0), 0)
-    expect(g.state.coins).toBe(50 + earned)
+    expect(g.state.coins).toBe(100 + earned)
   })
 
   it('연사 옵션은 쿨다운을 줄이고, 쌍발 옵션은 한 번에 두 대상에게 쏜다', () => {
