@@ -158,7 +158,8 @@ def create_app(
             variants_ready=request.app.state.variation.ready(),
             ai=AiStatus(
                 configured=gemini is not None,
-                model=str(diag.get("model") or getattr(gemini, "model", "") or ""),
+                api_key_set=settings.gemini_api_key_set,
+                model=str(diag.get("model") or settings.gemini_model),
                 last_error=diag.get("last_error"),
                 ok_calls=int(diag.get("ok_calls") or 0),
             ),

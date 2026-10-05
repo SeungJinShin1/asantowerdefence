@@ -100,7 +100,7 @@ defence/
 | `SESSION_SECRET` | 세션 토큰 HMAC 비밀키 (32자 이상 랜덤) |
 | `ADMIN_TOKEN` | `/api/v1/admin/*` 호출용 토큰 |
 | `GEMINI_API_KEY` | Gemini API 키 |
-| `GEMINI_MODEL` | 텍스트 모델명 (예: 사용자가 지정). 하드코딩 금지 |
+| `GEMINI_MODEL` | 텍스트 모델명. 기본값 `gemini-3.6-flash`(코드 `Settings.gemini_model`). 모델을 바꿀 때는 이 환경변수로만 덮어쓴다 |
 | `FIREBASE_SERVICE_ACCOUNT_B64` | 서비스 계정 JSON을 base64로 인코딩한 값 (Render 환경변수는 여러 줄 JSON을 다루기 불편하므로 base64 사용). 값이 있으면 Firestore 저장소, 없으면 메모리 저장소. 설정 절차는 `docs/firestore_setup.md` |
 | `FIREBASE_SERVICE_ACCOUNT_FILE` | (대안) 서비스 계정 JSON 파일 경로. Render Secret Files 사용 시 `/etc/secrets/firebase.json`. b64 와 둘 중 하나 |
 | `FIRESTORE_COLLECTION_PREFIX` | 기본 `defence_` (개발/운영 분리용) |

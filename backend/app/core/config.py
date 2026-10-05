@@ -36,7 +36,8 @@ class Settings(BaseSettings):
     admin_token: str = ""
 
     gemini_api_key: str = ""
-    gemini_model: str = ""  # 하드코딩 금지 — 반드시 환경변수로
+    # 기본 모델. 운영에서 바꿀 때는 코드가 아니라 GEMINI_MODEL 환경변수로 덮어쓴다.
+    gemini_model: str = "gemini-3.6-flash"
 
     firebase_service_account_b64: str = ""
     # Render 'Secret Files' 등으로 JSON 파일을 올렸을 때의 경로(예: /etc/secrets/firebase.json). b64 와 둘 중 하나만 있으면 된다
@@ -76,6 +77,10 @@ class Settings(BaseSettings):
     @property
     def gemini_configured(self) -> bool:
         return bool(self.gemini_api_key and self.gemini_model)
+
+    @property
+    def gemini_api_key_set(self) -> bool:
+        return bool(self.gemini_api_key.strip())
 
     @property
     def firestore_configured(self) -> bool:

@@ -20,7 +20,13 @@ def test_healthz_matches_contract(client: TestClient) -> None:
         "status": "ok",
         "version": "0.1.0",
         "variantsReady": False,
-        "ai": {"configured": False, "model": "", "lastError": None, "okCalls": 0},
+        "ai": {
+            "configured": False,
+            "apiKeySet": False,
+            "model": "gemini-3.6-flash",
+            "lastError": None,
+            "okCalls": 0,
+        },
     }
     assert response.headers["x-request-id"]
 
@@ -48,6 +54,7 @@ def test_healthz_reports_ai_diagnostics_without_secrets(
         before = client.get("/healthz").json()["ai"]
         assert before == {
             "configured": True,
+            "apiKeySet": False,
             "model": "gemini-3.6-flash",
             "lastError": None,
             "okCalls": 0,

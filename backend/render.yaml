@@ -38,7 +38,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
-        sync: false
+        value: gemini-3.6-flash # 비워 두면 코드 기본값(동일)을 쓴다
       - key: FIREBASE_SERVICE_ACCOUNT_B64
         sync: false # 서비스 계정 JSON 내용을 그대로 붙여넣어도 됨(base64 도 가능)
       - key: FIREBASE_SERVICE_ACCOUNT_FILE

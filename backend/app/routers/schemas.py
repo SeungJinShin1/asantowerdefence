@@ -19,6 +19,7 @@ class AiStatus(CamelModel):
     """AI 연결 진단(공개 /healthz 용). 키·프롬프트·응답 원문은 절대 포함하지 않는다."""
 
     configured: bool
+    api_key_set: bool = False
     model: str = ""
     last_error: str | None = None
     ok_calls: int = 0

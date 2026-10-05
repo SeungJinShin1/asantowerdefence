@@ -1,7 +1,7 @@
 """Gemini 래퍼 (google-genai) — docs/04 §6: 타임아웃 12초, 재시도 1회(지수 백오프), JSON 응답 파싱, 목 주입 가능.
 
 보안(ENV 노출 방지·에러 로그): API 키는 Settings 에서만 받아 SDK 에 넘기고 로그·예외 메시지에 넣지 않는다.
-모델명은 GEMINI_MODEL 환경변수(하드코딩 금지). 프롬프트·응답 원문은 로그에 남기지 않는다(길이·종류만).
+모델명은 Settings.gemini_model(기본값, GEMINI_MODEL 환경변수로 덮어씀). 프롬프트·응답 원문은 로그에 남기지 않는다(길이·종류만).
 """
 
 from __future__ import annotations
