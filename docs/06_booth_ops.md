@@ -7,7 +7,7 @@
 ### 백엔드 — Render
 1. Render 대시보드 → **New → Blueprint** → 이 저장소 선택 → `backend/render.yaml` 이 읽힙니다.
 2. 생성 후 환경변수 화면에서 비어 있는 값 입력:
-   - `ALLOWED_ORIGINS`: Vercel 주소(예: `https://asan-defence.vercel.app`). 여러 개면 쉼표로.
+   - `FRONTEND_URL`: 기본값이 `https://asantowerdefence.vercel.app` 이라 보통 넣지 않아도 된다. 프론트 도메인을 바꿨을 때만 수정. (`ALLOWED_ORIGINS` 는 추가 출처가 필요할 때만, 쉼표 구분)
    - `GEMINI_API_KEY`, `GEMINI_MODEL`: Gemini 키와 모델명(현재 사용 모델 `gemini-3.6-flash`; 없으면 비워 둠 → 챗봇·오답 AI 노트만 꺼지고 게임은 동작).
    - `FIREBASE_SERVICE_ACCOUNT_B64`: `firestore_setup.md` 5절대로 만든 값(없으면 메모리 저장소 → 재시작 시 리더보드가 지워짐).
    - `SESSION_SECRET`, `ADMIN_TOKEN` 은 Render 가 자동 생성합니다. `ADMIN_TOKEN` 값은 2절(리더보드 초기화)에서 쓰니 적어 두세요.
@@ -16,7 +16,7 @@
 ### 프론트 — Vercel
 1. Vercel → **Add New Project** → 저장소 선택 → Root Directory `frontend`, Framework `Vite`.
 2. 환경변수 `VITE_API_BASE_URL` = `https://<render-app>.onrender.com/api/v1`.
-3. 배포 후 주소를 Render 의 `ALLOWED_ORIGINS` 에 넣고 Render 를 재배포합니다(CORS).
+3. 프론트 주소가 `https://asantowerdefence.vercel.app` 이면 CORS 는 자동 허용된다. 다른 도메인을 붙였다면 Render 의 `FRONTEND_URL` 을 그 주소로 바꾸고 재배포한다.
 
 ### 배포 전 자동 점검(개발자)
 ```bash

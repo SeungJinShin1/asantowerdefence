@@ -27,8 +27,10 @@ services:
         value: defence_
       - key: VARIANTS_PER_QUESTION
         value: "2"
+      - key: FRONTEND_URL
+        value: https://asantowerdefence.vercel.app # 배포된 프론트. CORS 에 자동 포함되고 루트(/)가 여기로 보낸다
       - key: ALLOWED_ORIGINS
-        sync: false # 예: https://<vercel-app>.vercel.app  (쉼표로 여러 개)
+        sync: false # (선택) 추가 허용 출처. 쉼표로 여러 개. 같은 프로젝트의 Vercel 프리뷰(asantowerdefence-*.vercel.app)는 자동 허용
       - key: SESSION_SECRET
         generateValue: true # Render 가 무작위 값을 만들어 준다(32자 이상)
       - key: ADMIN_TOKEN

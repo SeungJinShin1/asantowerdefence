@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     app_env: Literal["development", "test", "production"] = "development"
     app_version: str = "0.1.0"
     allowed_origins: str = "http://localhost:5173"
+    # 배포된 프론트(Vercel) 주소. CORS 에 항상 포함되고 루트(/)가 이 주소로 보낸다.
+    # ALLOWED_ORIGINS 를 따로 안 넣어도 Vercel 프론트가 Render 백엔드에 붙도록 하는 기본값.
+    frontend_url: str = "https://asantowerdefence.vercel.app"
+    # Vercel 프리뷰 배포(asantowerdefence-xxxx.vercel.app)만 추가로 허용. 다른 프로젝트 도메인은 불허.
+    allowed_origin_regex: str = r"^https://asantowerdefence(-[a-z0-9-]+)?\.vercel\.app$"
 
     session_secret: str = "change-me-to-a-random-string-at-least-32-chars"
     session_ttl_hours: int = 3
@@ -53,6 +58,20 @@ class Settings(BaseSettings):
     @property
     def allowed_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """CORS 화이트리스트 = ALLOWED_ORIGINS + FRONTEND_URL (중복 제거, 순서 유지)."""
+        merged = [*self.allowed_origins_list, self.frontend_url.strip().rstrip("/")]
+        return [o for i, o in enumerate(merged) if o and o not in merged[:i]]
+
+    @property
+    def public_frontend_url(self) -> str:
+        """사람이 브라우저로 API 루트를 열었을 때 보낼 게임 주소(로컬 주소는 제외)."""
+        for origin in self.cors_origins:
+            if "localhost" not in origin and "127.0.0.1" not in origin:
+                return origin
+        return ""
 
     @property
     def gemini_configured(self) -> bool:

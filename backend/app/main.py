@@ -2,7 +2,8 @@
 
 보안 5항목 (Phase 1 기준):
 - 라우트 보호·접근 제어: 세션 필수 엔드포인트는 core/security.require_session, 관리자는 require_admin.
-  CORS는 ALLOWED_ORIGINS 화이트리스트만, 자격 증명(credentials) 없음, GET/POST만 허용.
+  CORS는 ALLOWED_ORIGINS + FRONTEND_URL 화이트리스트(+ 같은 프로젝트의 Vercel 프리뷰 정규식)만,
+  자격 증명(credentials) 없음, GET/POST만 허용.
 - DB 보안 규칙: Firestore는 서버(Admin SDK)만 접근(Phase 5). Phase 1은 InMemorySessionStore.
 - ENV 프론트 노출 방지: 설정은 Settings로만 읽고 어떤 응답에도 넣지 않는다. production은 /docs·/openapi.json을 닫는다.
 - 중요 로직 서버 측 검증: 출제·채점·코인·콤보·점수는 domain/·services/에서만 계산한다.
@@ -124,7 +125,8 @@ def create_app(
     setup_rate_limiting(app, settings)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.allowed_origins_list,
+        allow_origins=settings.cors_origins,
+        allow_origin_regex=settings.allowed_origin_regex or None,
         allow_credentials=False,
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type", "X-Session-Token", "X-Admin-Token"],
@@ -136,13 +138,8 @@ def create_app(
     @app.get("/", include_in_schema=False)
     async def root() -> Response:
         """API 서버 루트: 사람이 브라우저로 열면 게임(프론트) 주소로 보낸다. 프론트 주소가 없으면 안내 JSON."""
-        origins = [
-            o
-            for o in settings.allowed_origins_list
-            if "localhost" not in o and "127.0.0.1" not in o
-        ]
-        if origins:
-            return RedirectResponse(origins[0], status_code=307)
+        if settings.public_frontend_url:
+            return RedirectResponse(settings.public_frontend_url, status_code=307)
         return JSONResponse(
             {
                 "name": "asan-defence-api",

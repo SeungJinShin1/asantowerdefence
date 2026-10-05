@@ -95,7 +95,8 @@ defence/
 | 변수 | 설명 |
 |---|---|
 | `APP_ENV` | `development` / `production` |
-| `ALLOWED_ORIGINS` | CORS 허용 목록 (쉼표 구분). 예: `https://<vercel-app>.vercel.app,http://localhost:5173` |
+| `FRONTEND_URL` | 배포된 프론트 주소(기본 `https://asantowerdefence.vercel.app`). CORS 에 자동 포함되고 API 루트(/)가 이 주소로 리다이렉트 |
+| `ALLOWED_ORIGINS` | (선택) 추가 CORS 허용 목록 (쉼표 구분). 예: `http://localhost:5173`. 같은 프로젝트의 Vercel 프리뷰(`asantowerdefence-*.vercel.app`)는 자동 허용 |
 | `SESSION_SECRET` | 세션 토큰 HMAC 비밀키 (32자 이상 랜덤) |
 | `ADMIN_TOKEN` | `/api/v1/admin/*` 호출용 토큰 |
 | `GEMINI_API_KEY` | Gemini API 키 |

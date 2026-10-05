@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
@@ -36,6 +37,58 @@ def test_cors_rejects_unknown_origin(client: TestClient) -> None:
     response = client.get("/healthz", headers={"Origin": "https://evil.example"})
     assert response.status_code == 200
     assert "access-control-allow-origin" not in response.headers
+
+
+def _preflight(client: TestClient, origin: str) -> httpx.Response:
+    return client.options(
+        "/api/v1/sessions",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+
+def test_cors_allows_frontend_url_even_without_allowed_origins(settings: Settings) -> None:
+    """운영 실수 방지: Render 에 ALLOWED_ORIGINS 를 안 넣어도 배포된 Vercel 프론트는 붙어야 한다."""
+    local_only = settings.model_copy(update={"allowed_origins": "http://localhost:5173"})
+    with TestClient(create_app(local_only)) as client:
+        response = _preflight(client, "https://asantowerdefence.vercel.app")
+        assert response.status_code == 200
+        assert (
+            response.headers["access-control-allow-origin"] == "https://asantowerdefence.vercel.app"
+        )
+
+
+def test_cors_allows_same_project_vercel_preview(client: TestClient) -> None:
+    response = _preflight(client, "https://asantowerdefence-git-main-abc123.vercel.app")
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"].endswith(".vercel.app")
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "https://other-project.vercel.app",
+        "http://asantowerdefence.vercel.app",  # https 만
+        "https://asantowerdefence.vercel.app.evil.example",
+    ],
+)
+def test_cors_rejects_other_vercel_like_origins(client: TestClient, origin: str) -> None:
+    response = _preflight(client, origin)
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_cors_origins_merge_and_dedupe() -> None:
+    settings = Settings(
+        _env_file=None,
+        allowed_origins="http://localhost:5173,https://asantowerdefence.vercel.app",
+        frontend_url="https://asantowerdefence.vercel.app/",
+    )
+    assert settings.cors_origins == ["http://localhost:5173", "https://asantowerdefence.vercel.app"]
+    assert settings.public_frontend_url == "https://asantowerdefence.vercel.app"
 
 
 def test_unknown_api_route_returns_json_404(client: TestClient) -> None:
@@ -84,7 +137,17 @@ def test_root_redirects_to_frontend_or_explains(client: TestClient, settings: Se
     assert response.status_code == 307
     assert response.headers["location"] == "https://example.vercel.app"
 
+    # ALLOWED_ORIGINS 가 로컬뿐이어도 FRONTEND_URL 기본값(Vercel)으로 보낸다
     local_only = settings.model_copy(update={"allowed_origins": "http://localhost:5173"})
     with TestClient(create_app(local_only)) as local_client:
+        response = local_client.get("/", follow_redirects=False)
+        assert response.status_code == 307
+        assert response.headers["location"] == "https://asantowerdefence.vercel.app"
+
+    # 공개 프론트 주소가 아예 없으면 안내 JSON
+    no_front = settings.model_copy(
+        update={"allowed_origins": "http://localhost:5173", "frontend_url": ""}
+    )
+    with TestClient(create_app(no_front)) as local_client:
         body = local_client.get("/").json()
         assert body["status"] == "ok" and "healthz" in body["hint"]
