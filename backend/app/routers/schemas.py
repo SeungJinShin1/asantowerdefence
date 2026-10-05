@@ -67,11 +67,18 @@ class CreateSessionRequest(CamelModel):
     nickname: str | None = Field(default=None, max_length=20)
 
 
+class TeacherSessionRequest(CamelModel):
+    """POST /sessions/teacher — 교사 코드. 서버 환경변수 TEACHER_CODE 와 비교한다."""
+
+    code: str = Field(min_length=1, max_length=64)
+
+
 class CreateSessionResponse(CamelModel):
     session_id: str
     token: str
     expires_at: datetime
     booth_mode: bool
+    teacher: bool = False  # 교사 모드 세션이면 true (화면 표시용 — 권한 판단은 서버 세션)
 
 
 # ---------- POST /sessions/{id}/stages/{n}/start · GET quiz/more ----------

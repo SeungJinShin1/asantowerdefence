@@ -19,6 +19,8 @@ import { useTopicsStore } from '@/features/learning/topicsStore'
 import { QuizModal } from '@/features/quiz/QuizModal'
 import { useProgressStore } from '@/features/session/progressStore'
 import { useSessionStore } from '@/features/session/sessionStore'
+import { useStageAccess } from '@/features/session/useStageAccess'
+import { TeacherTools } from '@/features/teacher/TeacherTools'
 import type { AnswerResponse, QuizItem } from '@/shared/api'
 import { Button } from '@/shared/ui/Button'
 
@@ -38,7 +40,7 @@ export function PlayPage({ onReady }: PlayPageProps) {
   const stage = Number(params.stage)
   const session = useSessionStore((s) => s.session)
   const handleApiError = useSessionStore((s) => s.handleApiError)
-  const isUnlocked = useProgressStore((s) => s.isUnlocked)
+  const { isTeacher, canEnter } = useStageAccess()
   const learnedStages = useProgressStore((s) => s.learnedStages)
   const markCleared = useProgressStore((s) => s.markCleared)
   const recordStageEnd = useRunStore((s) => s.recordStageEnd)
@@ -154,7 +156,7 @@ export function PlayPage({ onReady }: PlayPageProps) {
     }
   }, [controller, plan, quiz, takeQuiz])
 
-  if (!Number.isInteger(stage) || !isUnlocked(stage)) return <Navigate to="/stages" replace />
+  if (!Number.isInteger(stage) || !canEnter(stage)) return <Navigate to="/stages" replace />
 
   const submitQuiz = async (choiceIndex: number, answeredMs: number) => {
     if (!quiz || !controller || !plan) return
@@ -204,6 +206,7 @@ export function PlayPage({ onReady }: PlayPageProps) {
             if (!r.ok) setMessage(r.reason)
           }}
           onMessage={setMessage}
+          isTeacher={isTeacher}
         />
       ) : (
         <p className="p-8 text-center text-xl">게임을 불러오는 중…</p>
@@ -257,12 +260,14 @@ function PlayBoard({
   combo,
   onTileClick,
   onMessage,
+  isTeacher,
 }: {
   controller: GameController
   stage: number
   combo: number
   onTileClick: (tile: { x: number; y: number }) => void
   onMessage: (text: string) => void
+  isTeacher: boolean
 }) {
   const hud = useHud(controller)
   const selectedTower = controller.state.towers.find((t) => t.id === hud.selectedTowerId) ?? null
@@ -296,6 +301,16 @@ function PlayBoard({
             onSell={() => controller.sellSelected()}
             onDeselect={() => controller.select(null)}
           />
+          {isTeacher && (
+            <TeacherTools
+              onAddCoins={() => controller.teacherAddCoins()}
+              onSkipWave={() => {
+                const r = controller.teacherSkipWave()
+                if (!r.ok) onMessage(r.reason)
+              }}
+              canSkip={hud.status === 'playing' && hud.pendingQuiz === null}
+            />
+          )}
         </div>
       </div>
     </>

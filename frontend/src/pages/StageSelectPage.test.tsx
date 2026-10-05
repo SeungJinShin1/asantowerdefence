@@ -72,3 +72,35 @@ describe('StageSelectPage', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/learn/2')
   })
 })
+
+describe('StageSelectPage — 교사 모드', () => {
+  it('교사 세션이면 모든 단계가 열리고 배지와 안내가 보인다', async () => {
+    useSessionStore.setState({
+      status: 'ready',
+      session: {
+        sessionId: 's_t',
+        token: 't',
+        expiresAt: '',
+        boothMode: true,
+        nickname: '선생님',
+        teacher: true,
+      },
+    })
+    renderStages()
+    expect(await screen.findByRole('button', { name: '5단계 선장 4·4 만세운동' })).toBeEnabled()
+    for (const n of [1, 2, 3, 4, 5])
+      expect(screen.getByRole('button', { name: new RegExp(`^${n}단계`) })).toBeEnabled()
+    expect(screen.getAllByText('👩‍🏫 교사 모드').length).toBeGreaterThan(0)
+    expect(screen.getByText(/이 게임은 이렇게 동작해요/)).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: '4단계 공세리 성당' }))
+    expect(screen.getByText('학습 화면')).toBeInTheDocument()
+  })
+
+  it('학생 세션에는 교사 배지·안내가 없다', async () => {
+    renderStages()
+    await screen.findByRole('button', { name: /1단계 온양온천/ })
+    expect(screen.queryByText('👩‍🏫 교사 모드')).not.toBeInTheDocument()
+    expect(screen.queryByText(/이 게임은 이렇게 동작해요/)).not.toBeInTheDocument()
+  })
+})

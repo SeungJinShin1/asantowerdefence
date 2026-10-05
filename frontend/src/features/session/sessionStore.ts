@@ -21,6 +21,8 @@ export interface PersistedSession {
   expiresAt: string
   boothMode: boolean
   nickname: string | null
+  /** 교사 모드 세션(화면 표시용). 없으면 학생 세션 */
+  teacher?: boolean
 }
 
 export interface WakeOptions {
@@ -35,6 +37,8 @@ export interface SessionState {
   errorMessage: string | null
 
   startSession: (nickname: string | null) => Promise<boolean>
+  /** 교사 코드로 교사 세션을 시작한다. 실패해도 기존 세션은 그대로 둔다 */
+  startTeacherSession: (code: string) => Promise<boolean>
   restore: () => void
   clear: () => void
   markExpired: () => void
@@ -46,7 +50,7 @@ export interface SessionState {
 }
 
 export interface SessionStoreDeps {
-  api: Pick<Api, 'createSession' | 'healthz'>
+  api: Pick<Api, 'createSession' | 'healthz'> & Partial<Pick<Api, 'createTeacherSession'>>
   storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null
   now?: () => number
   sleep?: (ms: number) => Promise<void>
@@ -54,6 +58,8 @@ export interface SessionStoreDeps {
 
 const DEFAULT_WAKE: Required<WakeOptions> = { attempts: 10, delayMs: 3_000 }
 const START_FAILED_MESSAGE = '게임을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.'
+const TEACHER_FAILED_MESSAGE = '교사 모드로 들어가지 못했어요. 잠시 후 다시 시도해 주세요.'
+export const TEACHER_NICKNAME = '선생님'
 
 function safeStorage(): Storage | null {
   try {
@@ -84,6 +90,7 @@ function parsePersisted(raw: string | null): PersistedSession | null {
         expiresAt: value.expiresAt,
         boothMode: value.boothMode,
         nickname: typeof value.nickname === 'string' ? value.nickname : null,
+        ...(value.teacher === true ? { teacher: true } : {}),
       }
     }
   } catch {
@@ -130,6 +137,31 @@ export function createSessionStore(deps: SessionStoreDeps) {
         const message = error instanceof ApiError ? error.message : START_FAILED_MESSAGE
         set({ status: 'error', session: null, errorMessage: message })
         persist(null)
+        return false
+      }
+    },
+
+    async startTeacherSession(code) {
+      const previous = get().session
+      set({ status: 'starting', errorMessage: null })
+      try {
+        if (!deps.api.createTeacherSession) throw new Error('teacher mode unavailable')
+        const created = await deps.api.createTeacherSession(code.trim())
+        const session: PersistedSession = {
+          sessionId: created.sessionId,
+          token: created.token,
+          expiresAt: created.expiresAt,
+          boothMode: created.boothMode,
+          nickname: TEACHER_NICKNAME,
+          ...(created.teacher === true ? { teacher: true } : {}),
+        }
+        persist(session)
+        set({ status: 'ready', session, serverAwake: true })
+        return true
+      } catch (error) {
+        const message = error instanceof ApiError ? error.message : TEACHER_FAILED_MESSAGE
+        // 코드를 잘못 넣었다고 진행 중이던 세션이 사라지면 안 된다
+        set({ status: previous ? 'ready' : 'idle', session: previous, errorMessage: message })
         return false
       }
     },

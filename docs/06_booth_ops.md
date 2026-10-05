@@ -11,6 +11,7 @@
    - `GEMINI_API_KEY`: Gemini 키(없으면 챗봇·오답 AI 노트만 꺼지고 게임은 동작). `GEMINI_MODEL` 은 기본값 `gemini-3.6-flash` 이라 보통 생략. `/healthz` 의 `ai` 항목으로 설정 여부(`apiKeySet`, `configured`)와 마지막 오류 코드를 확인한다.
    - `FIREBASE_SERVICE_ACCOUNT_B64`: `firestore_setup.md` 5절대로 만든 값(없으면 메모리 저장소 → 재시작 시 리더보드가 지워짐).
    - `SESSION_SECRET`, `ADMIN_TOKEN` 은 Render 가 자동 생성합니다. `ADMIN_TOKEN` 값은 2절(리더보드 초기화)에서 쓰니 적어 두세요.
+   - `TEACHER_CODE`: 교사 모드 코드. 선생님께 말로 알려 줄 수 있는 짧은 문구로 정합니다(학생이 짐작하기 어렵게 6자 이상). 비워 두면 교사 모드가 꺼집니다. **사용법**: 타이틀 화면 로고를 5번 누름 → 운영자 메뉴 → 교사 코드 입력 → 모든 단계가 열린 화면으로 이동. 교사 모드 기록은 순위에 올라가지 않습니다.
 3. 배포가 끝나면 `https://<render-app>.onrender.com/healthz` 가 `{"status":"ok",...}` 를 보여 줘야 합니다.
 
 ### 프론트 — Vercel

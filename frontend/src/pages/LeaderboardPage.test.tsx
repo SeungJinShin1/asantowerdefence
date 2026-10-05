@@ -126,3 +126,29 @@ describe('LeaderboardPage', () => {
     expect(useSessionStore.getState().status).toBe('idle')
   })
 })
+
+describe('LeaderboardPage — 교사 모드', () => {
+  it('교사 세션은 등록 폼 대신 안내만 보인다', async () => {
+    useSessionStore.setState({
+      status: 'ready',
+      session: {
+        sessionId: 's_t',
+        token: 't',
+        expiresAt: '',
+        boothMode: true,
+        nickname: '선생님',
+        teacher: true,
+      },
+    })
+    useRunStore.getState().setFinish(finish)
+    renderAt(
+      '/leaderboard',
+      <Routes>
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
+      </Routes>,
+    )
+    expect(await screen.findByText('교사 모드 기록은 순위에 올라가지 않아요.')).toBeInTheDocument()
+    expect(screen.queryByLabelText('닉네임')).not.toBeInTheDocument()
+    expect(api.registerLeaderboard).not.toHaveBeenCalled()
+  })
+})

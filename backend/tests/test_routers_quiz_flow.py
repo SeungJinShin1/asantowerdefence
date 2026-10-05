@@ -107,8 +107,9 @@ def test_create_session_matches_contract(client: TestClient) -> None:
     response = client.post(f"{API}/sessions", json={"nickname": "역사탐험가"})
     assert response.status_code == 201
     body = response.json()
-    assert set(body) == {"sessionId", "token", "expiresAt", "boothMode"}
+    assert set(body) == {"sessionId", "token", "expiresAt", "boothMode", "teacher"}
     assert body["boothMode"] is True
+    assert body["teacher"] is False  # 일반 세션은 교사 모드가 아니다
     assert body["token"].startswith(body["sessionId"] + ".")
 
     no_body = client.post(f"{API}/sessions")

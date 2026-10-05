@@ -34,7 +34,9 @@ export function LeaderboardPage() {
     () => (session ? { sessionId: session.sessionId, token: session.token } : null),
     [session],
   )
-  const canRegister = Boolean(auth && finish && !registered)
+  // 교사 모드 기록은 순위에 올리지 않는다(서버도 409 로 막는다)
+  const isTeacher = session?.teacher === true
+  const canRegister = Boolean(auth && finish && !registered && !isTeacher)
   const validation = validateNickname(nickname)
 
   const load = useCallback(async () => {
@@ -107,6 +109,15 @@ export function LeaderboardPage() {
         >
           {registered.nickname} 님은 {registered.rank}위예요! ({registered.score.toLocaleString()}
           점)
+        </p>
+      )}
+
+      {isTeacher && finish && (
+        <p
+          role="note"
+          className="rounded-2xl bg-indigo-100 px-4 py-3 text-center font-bold text-indigo-950"
+        >
+          교사 모드 기록은 순위에 올라가지 않아요.
         </p>
       )}
 

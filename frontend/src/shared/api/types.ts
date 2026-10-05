@@ -65,6 +65,8 @@ export interface CreateSessionResponse {
   token: string
   expiresAt: string
   boothMode: boolean
+  /** 교사 모드 세션이면 true (화면 표시용 — 권한은 서버 세션이 판단) */
+  teacher?: boolean
 }
 
 // ---------- stages/{n}/start · quiz/more ----------

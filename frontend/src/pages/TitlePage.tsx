@@ -1,7 +1,7 @@
 /**
  * 타이틀 화면 (docs/02 §1, §2, docs/04 §8).
  * - 개인정보 안내 문구: "닉네임과 점수만 기록됩니다"
- * - 숨김 메뉴: 로고를 5번 탭하면 부스 운영자 메뉴(세션 초기화, 모드 안내, 퀴즈 연습)
+ * - 숨김 메뉴: 로고를 5번 탭하면 부스 운영자 메뉴(세션 초기화, 모드 안내, 퀴즈 연습, 교사 모드 입장)
  */
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
@@ -9,6 +9,7 @@ import { Link, useNavigate } from 'react-router'
 import { useRunStore } from '@/features/game/runStore'
 import { useProgressStore } from '@/features/session/progressStore'
 import { useSessionStore } from '@/features/session/sessionStore'
+import { TeacherLogin } from '@/features/teacher/TeacherLogin'
 import { Button } from '@/shared/ui/Button'
 
 export const HIDDEN_MENU_TAPS = 5
@@ -81,6 +82,7 @@ export function TitlePage() {
               퀴즈 연습(개발용)
             </Link>
           </div>
+          <TeacherLogin />
         </section>
       )}
     </main>

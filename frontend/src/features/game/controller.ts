@@ -35,6 +35,7 @@ import {
   startNextWave,
 } from './engine/loop'
 import type { EngineEvent, GameStatus, QuizTriggerKind, WavePhase } from './engine/state'
+import { grantReviewCoins, skipWave } from './engine/teacher'
 import { type BackgroundLayer, createBackgroundLayer } from './render/background'
 import { EffectLayer } from './render/effects'
 import { SpriteCache, allSpriteUrls } from './render/sprites'
@@ -204,6 +205,22 @@ export class GameController {
       startNextWave(this.game.state, this.game.ctx)
       this.flush()
     }
+  }
+
+  // ---------- 교사 검수 도구(교사 모드 화면에서만 호출) ----------
+
+  teacherAddCoins(): ActionResult {
+    const result = grantReviewCoins(this.game.state)
+    this.refresh()
+    return result
+  }
+
+  /** 웨이브를 건너뛰고 한 스텝 진행해 클리어(또는 승리) 사건까지 바로 내보낸다 */
+  teacherSkipWave(): ActionResult {
+    const result = skipWave(this.game.state)
+    if (result.ok) advance(this.game.state, this.game.ctx, SIM_DT, SIM_DT)
+    this.flush()
+    return result
   }
 
   togglePause(): void {

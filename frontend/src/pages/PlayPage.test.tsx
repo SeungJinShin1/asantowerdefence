@@ -208,3 +208,41 @@ describe('PlayPage — 웨이브 1 클리어 시나리오', () => {
     expect(useRunStore.getState().history[0]).toMatchObject({ stage: 1, won: false })
   })
 })
+
+describe('PlayPage — 교사 검수 도구', () => {
+  it('학생 세션에는 검수 도구가 없다', async () => {
+    await renderPlay()
+    expect(screen.queryByRole('region', { name: '교사 검수 도구' })).not.toBeInTheDocument()
+  })
+
+  it('교사 세션: 코인 +500, 웨이브 세 번 건너뛰면 스테이지 클리어', async () => {
+    useSessionStore.setState({
+      status: 'ready',
+      session: {
+        sessionId: 's_1',
+        token: 't',
+        expiresAt: '',
+        boothMode: true,
+        nickname: '선생님',
+        teacher: true,
+      },
+    })
+    const c = await renderPlay()
+    expect(screen.getByRole('region', { name: '교사 검수 도구' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /코인 \+500/ }))
+    expect(c.state.coins).toBe(650)
+
+    const skip = screen.getByRole('button', { name: /웨이브 건너뛰기/ })
+    await userEvent.click(skip)
+    expect(c.state.wavesCleared).toBe(1)
+    await userEvent.click(skip)
+    await userEvent.click(skip)
+    expect(c.state.status).toBe('won')
+    expect(await screen.findByRole('dialog', { name: '스테이지 클리어' })).toBeInTheDocument()
+    expect(api.reportEvent).toHaveBeenCalledWith(
+      { sessionId: 's_1', token: 't' },
+      expect.objectContaining({ type: 'WAVE_CLEARED', stageOrder: 1, wave: 3 }),
+    )
+  })
+})

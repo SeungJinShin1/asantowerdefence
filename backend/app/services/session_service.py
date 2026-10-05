@@ -8,6 +8,8 @@ finish 보고값은 scoring.validate_finish 로 상한 검증한 뒤 서버 점�
 
 from __future__ import annotations
 
+import hmac
+import logging
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
@@ -16,6 +18,7 @@ from app.core.errors import (
     ConflictError,
     NotFoundError,
     ScoreRejectedError,
+    UnauthorizedError,
     ValidationFailedError,
 )
 from app.core.security import issue_session_token, new_session_id
@@ -38,7 +41,10 @@ from app.routers.schemas import (
 )
 from app.services.session_store import SessionStore
 
+logger = logging.getLogger("app.session")
+
 NICKNAME_MAX_LEN = 20  # 정식 닉네임 규칙(2~10자·금칙어)은 Phase 5 domain/nickname.py 에서
+TEACHER_NICKNAME = "선생님"
 DOUBLE_COIN_EVENT = "DOUBLE_COIN_TIME"
 # 스테이지당 허용 횟수. WAVE_CLEARED 는 waves_per_stage, STAGE_FAILED 는 무제한(docs/03 events).
 EVENT_CAPS_PER_STAGE: dict[str, int] = {
@@ -60,7 +66,23 @@ class SessionService:
         self.settings = settings
         self.clock = clock
 
-    def create(self, nickname: str | None) -> tuple[Session, str]:
+    def create_teacher(self, code: str) -> tuple[Session, str]:
+        """교사 코드가 맞으면 교사 세션을 만든다. 코드가 설정되지 않았으면 교사 모드는 없는 것(404)으로 본다.
+
+        비교는 상수 시간(hmac.compare_digest)으로 하고, 입력한 코드·정답 코드는 응답·로그에 남기지 않는다.
+        """
+        expected = self.settings.teacher_code.strip()
+        if not expected:
+            raise NotFoundError("교사 모드가 꺼져 있어요. 운영자에게 문의해 주세요.")
+        given = code.strip()
+        if not hmac.compare_digest(given.encode("utf-8"), expected.encode("utf-8")):
+            logger.warning("teacher_code_rejected")
+            raise UnauthorizedError("교사 코드가 맞지 않아요.", detail="teacher_code")
+        session, token = self.create(TEACHER_NICKNAME, teacher=True)
+        logger.info("teacher_session_created")
+        return session, token
+
+    def create(self, nickname: str | None, *, teacher: bool = False) -> tuple[Session, str]:
         """세션을 만들고 (세션, 토큰)을 돌려준다. 닉네임은 저장만 한다(개인정보 아님)."""
         now = self.clock()
         session_id = new_session_id()
@@ -74,6 +96,7 @@ class SessionService:
             expires_at=expires_at,
             booth_mode=self.settings.booth_mode,
             waves_per_stage=scoring.waves_per_stage(self.settings.booth_mode),
+            is_teacher=teacher,
         )
         token = issue_session_token(session_id, expires_at, self.settings.session_secret)
         self.store.create(session)
@@ -114,11 +137,22 @@ class SessionService:
 
     def finish(self, session_id: str, req: FinishRequest) -> FinishResponse:
         session = self._load_active(session_id)
+        coins_left = req.coins_left_at_end
+        if session.is_teacher:
+            # 교사 모드는 검수용 '코인 받기'를 쓰므로 거부하지 않고 상한으로 깎는다(리더보드에는 못 올린다)
+            coins_left = min(
+                coins_left,
+                scoring.max_client_coins(
+                    coins_from_quiz=session.stats.coins_from_quiz,
+                    stages_started=len(session.stages_started),
+                    waves_cleared=req.waves_cleared,
+                ),
+            )
         report = FinishReport(
             stages_cleared=req.stages_cleared,
             waves_cleared=req.waves_cleared,
             lives_left_at_end=req.lives_left_at_end,
-            coins_left_at_end=req.coins_left_at_end,
+            coins_left_at_end=coins_left,
             client_score=req.client_score,
         )
         reasons = scoring.validate_finish(
@@ -137,7 +171,7 @@ class SessionService:
             waves_cleared=req.waves_cleared,
             stages_cleared=req.stages_cleared,
             lives_left=req.lives_left_at_end,
-            coins_left=req.coins_left_at_end,
+            coins_left=coins_left,
         )
         now = self.clock()
         session.result = FinishResult(

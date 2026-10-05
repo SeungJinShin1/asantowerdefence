@@ -35,6 +35,8 @@ services:
         generateValue: true # Render 가 무작위 값을 만들어 준다(32자 이상)
       - key: ADMIN_TOKEN
         generateValue: true
+      - key: TEACHER_CODE
+        sync: false # 교사 모드 코드(선생님께 알려 줄 짧은 문구). 비우면 교사 모드 꺼짐
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL

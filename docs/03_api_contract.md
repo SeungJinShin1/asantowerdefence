@@ -12,7 +12,7 @@ Base URL: `{VITE_API_BASE_URL}` = `https://<render-app>.onrender.com/api/v1`
   { "error": { "code": "SESSION_EXPIRED", "message": "세션이 만료되었어요. 처음부터 다시 시작해 주세요." } }
   ```
   코드: `VALIDATION_ERROR`(422), `UNAUTHORIZED`(401), `SESSION_EXPIRED`(401), `NOT_FOUND`(404), `RATE_LIMITED`(429), `SCORE_REJECTED`(400), `NICKNAME_REJECTED`(400), `AI_UNAVAILABLE`(503), `INTERNAL`(500)
-- 요청 제한(IP 기준, slowapi): 기본 120/분. `POST /chat` 20/분, `POST /review` 5/분, `POST /leaderboard` 5/분, `POST /sessions` 30/분.
+- 요청 제한(IP 기준, slowapi): 기본 120/분. `POST /chat` 20/분, `POST /review` 5/분, `POST /leaderboard` 5/분, `POST /sessions` 30/분, `POST /sessions/teacher` 5/분.
 
 ## 엔드포인트
 
@@ -29,8 +29,13 @@ Base URL: `{VITE_API_BASE_URL}` = `https://<render-app>.onrender.com/api/v1`
 ### POST /sessions
 ```json
 → { "nickname": "역사탐험가" }              // 선택. 없으면 null
-← 201 { "sessionId":"s_9f2...", "token":"s_9f2....1727...abc", "expiresAt":"...", "boothMode":true }
+← 201 { "sessionId":"s_9f2...", "token":"s_9f2....1727...abc", "expiresAt":"...", "boothMode":true, "teacher":false }
 ```
+
+### POST /sessions/teacher
+교사 모드 세션 생성(운영자 메뉴). 요청 `{ "code": "<교사 코드>" }` → 201, 본문은 `POST /sessions` 와 같고 `"teacher": true` (일반 세션은 `false`).
+- 서버 환경변수 `TEACHER_CODE` 와 상수 시간 비교(앞뒤 공백 무시, 대소문자 구분). 비어 있으면 404 `NOT_FOUND`(교사 모드 꺼짐), 틀리면 401 `UNAUTHORIZED`("교사 코드가 맞지 않아요."). IP당 5/분. 코드는 응답·로그에 남기지 않는다.
+- 교사 세션(`isTeacher`): 화면이 모든 단계를 연다. `POST /leaderboard` 는 409, `finish` 의 남은 코인이 상한을 넘으면 거부 대신 상한으로 깎아 계산한다(검수용 코인 받기 때문).
 
 ### POST /sessions/{sessionId}/stages/{stageOrder}/start   (X-Session-Token)
 스테이지 시작. 서버가 문제 묶음을 준비한다(변형 캐시 우선, 없으면 원본).

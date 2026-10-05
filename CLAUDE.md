@@ -91,4 +91,5 @@ npm run build && npm run lint
 - Gemini·Firestore 키는 아직 없음 → 메모리 저장소·Gemini 목으로 동작. 실제 키가 생기면 변형 20개 품질 검수(✋)부터 한다.
 - 2026-10-05 게임성 개편: 퀴즈는 몬스터 수 기준 출제(`config/waves.quizMarksFor`), 부스 웨이브 13→23→37마리, 타워 업그레이드 옵션 4종(`config/upgrades.ts`, 타워당 6회), 게임 속도 ×1~×8(기본 ×2), Play 화면 전체 폭. 밸런스는 `engine/balance.sim.test.ts` 표로 확인.
 - 2026-10-05 타워 재설계: 나중에 열리는 타워일수록 비싸고 강함(비용 50/70/100/120/150, 초당 피해 7→12→33→20(광역)→44), 단계별 배율 `STAGE_SCALE`(체력 1.0→2.5, 보스 0.55→2.6, 수량 0.6→1.2), 시작 코인 150. 타워별 발사체·명중 이펙트는 `render/projectiles.ts`·`render/effects.ts`. 밸런스는 반드시 `balance.sim.test.ts`의 **초보(새 타워를 먼저 사는) 플레이어** 표로 확인한다.
+- 2026-10-05 교사 모드: 타이틀 로고 5탭 → 운영자 메뉴 → 교사 코드(`TEACHER_CODE` env, `POST /sessions/teacher`). 모든 단계 열림(`useStageAccess`), 검수 도구(`engine/teacher.ts`), 원리 안내 패널, 리더보드 제외(서버). 계정·로그인은 만들지 않는다.
 - 이미지 자산 19장은 `frontend/public/assets/`에 배치됨(원본은 `assets/raw/`, 재처리는 `scripts/prepare_assets.py`). 슬라임·골렘 원본은 왼쪽을 봐서 `render/sprites.ts`의 `FACES_LEFT`로 보정.

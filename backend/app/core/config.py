@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     session_secret: str = "change-me-to-a-random-string-at-least-32-chars"
     session_ttl_hours: int = 3
     admin_token: str = ""
+    # 교사 코드: 타이틀의 운영자 메뉴에서 입력하면 모든 단계가 열린 교사 세션을 만든다.
+    # 비어 있으면 교사 모드는 꺼진다. 프론트 번들·응답·로그에 넣지 않는다.
+    teacher_code: str = ""
 
     gemini_api_key: str = ""
     # 기본 모델. 운영에서 바꿀 때는 코드가 아니라 GEMINI_MODEL 환경변수로 덮어쓴다.
@@ -73,6 +76,10 @@ class Settings(BaseSettings):
             if "localhost" not in origin and "127.0.0.1" not in origin:
                 return origin
         return ""
+
+    @property
+    def teacher_enabled(self) -> bool:
+        return bool(self.teacher_code.strip())
 
     @property
     def gemini_configured(self) -> bool:

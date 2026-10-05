@@ -99,6 +99,7 @@ defence/
 | `ALLOWED_ORIGINS` | (선택) 추가 CORS 허용 목록 (쉼표 구분). 예: `http://localhost:5173`. 같은 프로젝트의 Vercel 프리뷰(`asantowerdefence-*.vercel.app`)는 자동 허용 |
 | `SESSION_SECRET` | 세션 토큰 HMAC 비밀키 (32자 이상 랜덤) |
 | `ADMIN_TOKEN` | `/api/v1/admin/*` 호출용 토큰 |
+| `TEACHER_CODE` | 교사 모드 코드(타이틀 운영자 메뉴에서 입력). 비우면 교사 모드 꺼짐 |
 | `GEMINI_API_KEY` | Gemini API 키 |
 | `GEMINI_MODEL` | 텍스트 모델명. 기본값 `gemini-3.6-flash`(코드 `Settings.gemini_model`). 모델을 바꿀 때는 이 환경변수로만 덮어쓴다 |
 | `FIREBASE_SERVICE_ACCOUNT_B64` | 서비스 계정 JSON을 base64로 인코딩한 값 (Render 환경변수는 여러 줄 JSON을 다루기 불편하므로 base64 사용). 값이 있으면 Firestore 저장소, 없으면 메모리 저장소. 설정 절차는 `docs/firestore_setup.md` |

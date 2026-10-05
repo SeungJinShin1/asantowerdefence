@@ -1,10 +1,12 @@
-/** 스테이지 선택 (docs/02 §1·§2): 1단계만 열려 있고, 클리어할 때마다 다음 단계가 해금된다. */
+/** 스테이지 선택 (docs/02 §1·§2): 1단계만 열려 있고, 클리어할 때마다 다음 단계가 해금된다. 교사 모드는 모두 열린다. */
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 
 import { useTopicsStore } from '@/features/learning/topicsStore'
 import { STAGE_COUNT, useProgressStore } from '@/features/session/progressStore'
 import { useSessionStore } from '@/features/session/sessionStore'
+import { useStageAccess } from '@/features/session/useStageAccess'
+import { TeacherBadge, TeacherGuide } from '@/features/teacher/TeacherGuide'
 
 const TOWER_LABEL: Record<number, string> = {
   1: '온천 타워',
@@ -17,7 +19,7 @@ const TOWER_LABEL: Record<number, string> = {
 export function StageSelectPage() {
   const navigate = useNavigate()
   const { topics, status, load } = useTopicsStore()
-  const isUnlocked = useProgressStore((s) => s.isUnlocked)
+  const { isTeacher, canEnter } = useStageAccess()
   const isCleared = useProgressStore((s) => s.isCleared)
   const clearedStages = useProgressStore((s) => s.clearedStages)
   const setCurrentStage = useProgressStore((s) => s.setCurrentStage)
@@ -28,7 +30,7 @@ export function StageSelectPage() {
   }, [load])
 
   const select = (stage: number) => {
-    if (!isUnlocked(stage)) return
+    if (!canEnter(stage)) return
     setCurrentStage(stage)
     navigate(`/learn/${stage}`)
   }
@@ -41,7 +43,14 @@ export function StageSelectPage() {
           {nickname ? `${nickname} 님, ` : ''}
           클리어한 스테이지: {clearedStages.length} / {STAGE_COUNT}
         </p>
+        {isTeacher && (
+          <p className="mt-2">
+            <TeacherBadge /> <span className="text-sm">모든 단계가 열려 있어요.</span>
+          </p>
+        )}
       </header>
+
+      {isTeacher && <TeacherGuide />}
 
       {status === 'loading' && <p className="text-center">주제를 불러오는 중…</p>}
       {status === 'error' && (
@@ -55,7 +64,7 @@ export function StageSelectPage() {
 
       <ol className="grid gap-4 sm:grid-cols-2">
         {topics.map((topic) => {
-          const unlocked = isUnlocked(topic.order)
+          const unlocked = canEnter(topic.order)
           const cleared = isCleared(topic.order)
           return (
             <li key={topic.id}>

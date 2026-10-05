@@ -187,6 +187,8 @@ class Session(CamelModel):
     result: FinishResult | None = None
     leaderboard_id: str | None = None
     chat_count: int = 0  # 세션당 챗봇 호출 횟수(docs/04 §4: 40회/판)
+    # 교사 모드 세션: 모든 단계가 열리고 검수 도구를 쓴다. 리더보드에 올릴 수 없다
+    is_teacher: bool = False
 
     @property
     def is_finished(self) -> bool:

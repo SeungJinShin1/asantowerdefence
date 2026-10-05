@@ -10,6 +10,7 @@ import { LearnCards } from '@/features/learning/LearnCards'
 import { useTopicsStore } from '@/features/learning/topicsStore'
 import { useProgressStore } from '@/features/session/progressStore'
 import { useSessionStore } from '@/features/session/sessionStore'
+import { useStageAccess } from '@/features/session/useStageAccess'
 import { api } from '@/shared/api'
 import { Button } from '@/shared/ui/Button'
 
@@ -20,7 +21,7 @@ export function LearnPage() {
   const { status, load, byOrder } = useTopicsStore()
   const session = useSessionStore((s) => s.session)
   const handleApiError = useSessionStore((s) => s.handleApiError)
-  const isUnlocked = useProgressStore((s) => s.isUnlocked)
+  const { canEnter } = useStageAccess()
   const learnedStages = useProgressStore((s) => s.learnedStages)
   const markLearned = useProgressStore((s) => s.markLearned)
   const [notice, setNotice] = useState<string | null>(null)
@@ -34,7 +35,7 @@ export function LearnPage() {
     void load()
   }, [load])
 
-  if (!Number.isInteger(stage) || !isUnlocked(stage)) return <Navigate to="/stages" replace />
+  if (!Number.isInteger(stage) || !canEnter(stage)) return <Navigate to="/stages" replace />
 
   const topic = byOrder(stage)
   const completed = learnedStages.includes(stage)

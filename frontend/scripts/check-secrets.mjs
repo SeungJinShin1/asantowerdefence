@@ -8,6 +8,7 @@ const PATTERNS = [
   /GEMINI_API_KEY/,
   /SESSION_SECRET/,
   /ADMIN_TOKEN/,
+  /TEACHER_CODE/,
   /FIREBASE_SERVICE_ACCOUNT/,
   /AIza[0-9A-Za-z_-]{30,}/, // Google API 키 형태
   /"private_key"/,

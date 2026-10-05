@@ -43,6 +43,14 @@ export function createApi(client: ApiClient) {
         body: { nickname: nickname ?? null } satisfies CreateSessionRequest,
       }),
 
+    /** 교사 모드: 코드가 맞으면 교사 세션을 만든다. 시도 제한(5회/분)을 아끼려고 자동 재시도는 끈다 */
+    createTeacherSession: (code: string) =>
+      client.request<CreateSessionResponse>('/sessions/teacher', {
+        method: 'POST',
+        body: { code },
+        retry: false,
+      }),
+
     startStage: (auth: SessionAuth, stageOrder: number, retry = false) =>
       client.request<StageStartResponse>(sessionPath(auth, `/stages/${stageOrder}/start`), {
         method: 'POST',

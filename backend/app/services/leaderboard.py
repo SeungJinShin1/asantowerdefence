@@ -78,6 +78,9 @@ class LeaderboardService:
         self.clock = clock
 
     def register(self, session: Session, nickname: str) -> RegisterLeaderboardResponse:
+        if session.is_teacher:
+            # 단계를 건너뛰고 검수 도구를 쓴 기록이 학생 순위에 섞이지 않게 한다
+            raise ConflictError("교사 모드 기록은 순위에 올리지 않아요.")
         if not session.is_finished or session.result is None:
             raise ConflictError("게임이 끝난 뒤에 기록할 수 있어요.")
         if session.leaderboard_id:
