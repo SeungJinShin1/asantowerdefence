@@ -15,10 +15,20 @@ from pydantic import Field
 from app.domain.models import CamelModel, EventType, QuizKind
 
 
+class AiStatus(CamelModel):
+    """AI 연결 진단(공개 /healthz 용). 키·프롬프트·응답 원문은 절대 포함하지 않는다."""
+
+    configured: bool
+    model: str = ""
+    last_error: str | None = None
+    ok_calls: int = 0
+
+
 class HealthResponse(CamelModel):
     status: str = "ok"
     version: str
     variants_ready: bool
+    ai: AiStatus
 
 
 class ErrorBody(CamelModel):

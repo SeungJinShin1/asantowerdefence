@@ -26,7 +26,7 @@ from app.core.logging import RequestLogMiddleware, configure_logging
 from app.core.security import setup_rate_limiting
 from app.domain.nickname import load_banned_words
 from app.routers import api_router
-from app.routers.schemas import HealthResponse
+from app.routers.schemas import AiStatus, HealthResponse
 from app.services.chat import ChatService
 from app.services.firestore_store import (
     FirestoreLeaderboardStore,
@@ -150,10 +150,18 @@ def create_app(
 
     @app.get("/healthz", response_model=HealthResponse, tags=["health"])
     async def healthz(request: Request) -> HealthResponse:
-        """프론트 첫 화면의 서버 깨우기용. 비밀값·내부 상태는 넣지 않는다."""
+        """프론트 첫 화면의 서버 깨우기용 + AI 연결 진단. 비밀값은 넣지 않는다(모델명·오류 코드만)."""
+        gemini = request.app.state.gemini
+        diag = gemini.diagnostics() if hasattr(gemini, "diagnostics") else {}
         return HealthResponse(
             version=settings.app_version,
             variants_ready=request.app.state.variation.ready(),
+            ai=AiStatus(
+                configured=gemini is not None,
+                model=str(diag.get("model") or getattr(gemini, "model", "") or ""),
+                last_error=diag.get("last_error"),
+                ok_calls=int(diag.get("ok_calls") or 0),
+            ),
         )
 
     app.include_router(api_router, prefix=API_PREFIX)

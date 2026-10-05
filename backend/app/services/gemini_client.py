@@ -53,6 +53,24 @@ def parse_json(text: str) -> Any:
         raise GeminiError(f"JSON 파싱 실패: {exc.msg}") from None
 
 
+def summarize_error(exc: Exception | None) -> str:
+    """예외를 '종류 HTTP코드 상태' 한 줄로 요약한다(예: 'ClientError 404 NOT_FOUND').
+
+    google-genai 의 APIError 는 code(HTTP)·status(문자열)를 가진다.
+    메시지 본문은 키·URL 이 섞일 수 있어 넣지 않는다.
+    """
+    if exc is None:
+        return "Unknown"
+    parts = [type(exc).__name__]
+    code = getattr(exc, "code", None)
+    if isinstance(code, int):
+        parts.append(str(code))
+    status = getattr(exc, "status", None)
+    if isinstance(status, str) and status:
+        parts.append(status[:40])
+    return " ".join(parts)
+
+
 class GoogleGeminiClient:
     """실제 Gemini 호출. SDK 클라이언트는 첫 호출 때 만든다(테스트는 models_api 를 주입)."""
 
@@ -78,10 +96,17 @@ class GoogleGeminiClient:
         self._backoff = backoff_sec
         self._sleep = sleep
         self._models = models_api
+        # 운영 진단용(비밀값 없음): 마지막 실패의 예외 종류·HTTP 코드·상태 문자열, 성공 횟수
+        self.last_error: str | None = None
+        self.ok_calls = 0
 
     @property
     def model(self) -> str:
         return self._model
+
+    def diagnostics(self) -> dict[str, Any]:
+        """/healthz 용 요약. 키·프롬프트·응답 원문은 절대 넣지 않는다."""
+        return {"model": self._model, "last_error": self.last_error, "ok_calls": self.ok_calls}
 
     def _api(self) -> Any:
         if self._models is None:
@@ -138,14 +163,19 @@ class GoogleGeminiClient:
         last: Exception | None = None
         for attempt in range(self._retries + 1):
             try:
-                return fn()
+                result = fn()
             except Exception as exc:  # SDK 예외 종류가 다양하므로 넓게 잡아 GeminiError 로 바꾼다
                 last = exc
                 if attempt < self._retries:
                     self._sleep(self._backoff * (2**attempt))
-        name = type(last).__name__ if last else "Unknown"
-        logger.warning("gemini_call_failed", extra={"code": name})
-        raise GeminiError(f"Gemini 호출 실패: {name}") from None
+                continue
+            self.ok_calls += 1
+            self.last_error = None
+            return result
+        summary = summarize_error(last)
+        self.last_error = summary
+        logger.warning("gemini_call_failed", extra={"code": summary})
+        raise GeminiError(f"Gemini 호출 실패: {summary}") from None
 
 
 class FakeGeminiClient:

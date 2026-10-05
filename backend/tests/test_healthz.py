@@ -9,13 +9,54 @@ from pydantic import ValidationError
 
 from app.core.config import Settings
 from app.main import create_app
+from app.services.gemini_client import ChatTurn, GeminiError, GoogleGeminiClient
+from app.services.question_bank import QuestionBank
 
 
 def test_healthz_matches_contract(client: TestClient) -> None:
     response = client.get("/healthz")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "version": "0.1.0", "variantsReady": False}
+    assert response.json() == {
+        "status": "ok",
+        "version": "0.1.0",
+        "variantsReady": False,
+        "ai": {"configured": False, "model": "", "lastError": None, "okCalls": 0},
+    }
     assert response.headers["x-request-id"]
+
+
+def test_healthz_reports_ai_diagnostics_without_secrets(
+    settings: Settings, question_bank: QuestionBank
+) -> None:
+    """운영 진단: 모델명·마지막 오류 코드·성공 횟수만 노출하고 키는 절대 노출하지 않는다."""
+
+    class NotFoundModelError(Exception):
+        code = 404
+        status = "NOT_FOUND"
+
+    class FailingModels:
+        def generate_content(self, **_kw: object) -> None:
+            raise NotFoundModelError("models/x is not found; key=secret-key")
+
+    gemini = GoogleGeminiClient(
+        "secret-key", "gemini-3.6-flash", sleep=lambda _s: None, models_api=FailingModels()
+    )
+    app = create_app(
+        settings, question_bank=question_bank, gemini_client=gemini, build_variants_on_startup=False
+    )
+    with TestClient(app) as client:
+        before = client.get("/healthz").json()["ai"]
+        assert before == {
+            "configured": True,
+            "model": "gemini-3.6-flash",
+            "lastError": None,
+            "okCalls": 0,
+        }
+        with pytest.raises(GeminiError):
+            gemini.generate_text("sys", [ChatTurn("user", "hi")])
+        after = client.get("/healthz").json()
+        assert after["ai"]["lastError"] == "NotFoundModelError 404 NOT_FOUND"
+        assert "secret" not in str(after)
 
 
 def test_cors_allows_whitelisted_origin(client: TestClient) -> None:

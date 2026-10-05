@@ -123,3 +123,22 @@ def test_fake_client_queue_and_recording() -> None:
     with pytest.raises(GeminiError):
         fake.generate_text("sys", [])
     assert fake.generate_json("sys", "p") == {"ok": True}
+
+
+def test_client_records_last_error_summary_and_ok_calls() -> None:
+    class FakeApiError(Exception):
+        def __init__(self) -> None:
+            super().__init__("400 INVALID_ARGUMENT. API key not valid. key=secret-key")
+            self.code = 400
+            self.status = "INVALID_ARGUMENT"
+
+    api = FakeModelsApi([FakeApiError(), FakeApiError(), "ok"])
+    client = make_client(api)
+    assert client.diagnostics() == {"model": "test-model", "last_error": None, "ok_calls": 0}
+    with pytest.raises(GeminiError) as info:
+        client.generate_text("s", [ChatTurn("user", "q")])
+    assert str(info.value) == "Gemini 호출 실패: FakeApiError 400 INVALID_ARGUMENT"
+    assert "secret-key" not in str(info.value)
+    assert client.last_error == "FakeApiError 400 INVALID_ARGUMENT"
+    client.generate_text("s", [ChatTurn("user", "q")])
+    assert client.diagnostics() == {"model": "test-model", "last_error": None, "ok_calls": 1}
