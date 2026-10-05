@@ -90,4 +90,5 @@ npm run build && npm run lint
 - Phase 1~5 구현 완료(백엔드·프론트·타워디펜스 엔진·AI 연동(목)·Firestore 저장소·리더보드·보안 점검). Phase 6은 배포 자산(`backend/render.yaml`, `docs/06_booth_ops.md`, 스모크 스크립트)까지 준비됨 — 실제 Render/Vercel 배포와 Firestore 수동 설정(`docs/firestore_setup.md`)은 사용자 작업.
 - Gemini·Firestore 키는 아직 없음 → 메모리 저장소·Gemini 목으로 동작. 실제 키가 생기면 변형 20개 품질 검수(✋)부터 한다.
 - 2026-10-05 게임성 개편: 퀴즈는 몬스터 수 기준 출제(`config/waves.quizMarksFor`), 부스 웨이브 13→23→37마리, 타워 업그레이드 옵션 4종(`config/upgrades.ts`, 타워당 6회), 게임 속도 ×1~×8(기본 ×2), Play 화면 전체 폭. 밸런스는 `engine/balance.sim.test.ts` 표로 확인.
+- 2026-10-05 타워 재설계: 나중에 열리는 타워일수록 비싸고 강함(비용 50/70/100/120/150, 초당 피해 7→12→33→20(광역)→44), 단계별 배율 `STAGE_SCALE`(체력 1.0→2.5, 보스 0.55→2.6, 수량 0.6→1.2), 시작 코인 150. 타워별 발사체·명중 이펙트는 `render/projectiles.ts`·`render/effects.ts`. 밸런스는 반드시 `balance.sim.test.ts`의 **초보(새 타워를 먼저 사는) 플레이어** 표로 확인한다.
 - 이미지 자산 19장은 `frontend/public/assets/`에 배치됨(원본은 `assets/raw/`, 재처리는 `scripts/prepare_assets.py`). 슬라임·골렘 원본은 왼쪽을 봐서 `render/sprites.ts`의 `FACES_LEFT`로 보정.

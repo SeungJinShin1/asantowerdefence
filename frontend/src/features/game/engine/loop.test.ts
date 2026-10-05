@@ -308,6 +308,16 @@ describe('건설·업그레이드·판매', () => {
     expect(g.state.coins).toBe(100 + earned)
   })
 
+  it('유도 발사체가 터지면 impact 사건(타워·폭발 반지름)을 내보낸다 — 타워별 명중 이펙트용', () => {
+    const g = game()
+    expect(placeTower(g.state, g.ctx, 'onsen', { x: 4, y: 2 })).toEqual({ ok: true })
+    startWave(g)
+    runResuming(g, 6)
+    const impacts = events(g, 'impact')
+    expect(impacts.length).toBeGreaterThan(0)
+    expect(impacts[0]).toMatchObject({ type: 'impact', tower: 'onsen', radius: 0.6 })
+  })
+
   it('연사 옵션은 쿨다운을 줄이고, 쌍발 옵션은 한 번에 두 대상에게 쏜다', () => {
     const g = game()
     g.state.coins = 1000

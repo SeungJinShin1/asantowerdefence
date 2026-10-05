@@ -231,6 +231,10 @@ function stepProjectiles(state: GameState, ctx: GameContext, dt: number): void {
       if (enemy.isBoss && state.bossBonusDamage > 0) state.bossBonusDamage = 0 // 보스 첫 피격에 소모
       if (hit.killed) handleKill(state, ctx, enemy)
     }
+    // 유도 발사체가 도착해 터졌으면 명중 이펙트 지점을 알린다(관통은 hit 마다 그린다)
+    if (!p.alive && p.targetId !== null) {
+      state.outbox.push({ type: 'impact', pos: p.pos, tower: p.tower, radius: p.splashRadius })
+    }
   }
   state.projectiles = state.projectiles.filter((p) => p.alive)
 }

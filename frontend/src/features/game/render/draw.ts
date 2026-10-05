@@ -1,4 +1,4 @@
-/** 한 프레임 그리기: 배경(캐시) → 건설 하이라이트 → 사거리 → 타워 → 투사체 → 몬스터(+체력바) → 이펙트 */
+/** 한 프레임 그리기: 배경(캐시) → 건설 하이라이트 → 사거리 → 타워 → 발사체(타워별 모양) → 몬스터(+체력바) → 이펙트 */
 import { ENEMIES, TILE_PX, type TowerId } from '../config/balance'
 import { isTargetable } from '../engine/enemy'
 import type { GameContext } from '../engine/loop'
@@ -7,6 +7,7 @@ import type { GameState } from '../engine/state'
 import { canBuildAt, towerStats } from '../engine/tower'
 import type { BackgroundLayer } from './background'
 import type { EffectLayer } from './effects'
+import { drawProjectile } from './projectiles'
 import {
   BASE_SPRITE_URL,
   type SpriteCache,
@@ -100,18 +101,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, p: FrameParams): void {
     )
   }
 
-  for (const proj of state.projectiles) {
-    ctx.fillStyle = TOWER_COLORS[proj.tower]
-    ctx.beginPath()
-    ctx.arc(
-      proj.pos.x * TILE_PX,
-      proj.pos.y * TILE_PX,
-      proj.splashRadius >= 1 ? 8 : proj.tower === 'geobukseon' ? 7 : 4,
-      0,
-      Math.PI * 2,
-    )
-    ctx.fill()
-  }
+  // 타워마다 다른 발사체(물줄기·소리 파동·대포알·종소리·화살)
+  for (const proj of state.projectiles) drawProjectile(ctx, proj, state.time)
 
   for (const enemy of state.enemies) {
     if (!enemy.alive) continue

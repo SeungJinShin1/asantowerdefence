@@ -75,6 +75,8 @@ export type EngineEvent =
   | { type: 'quiz_requested'; kind: QuizTriggerKind; count: number }
   | { type: 'game_event'; id: GameEventId; coins?: number; until?: number }
   | { type: 'hit'; pos: Vec; tower: TowerId; damage: number }
+  /** 유도 발사체가 도착해 터진 지점(타워별 명중 이펙트용). radius = 폭발 반지름(타일) */
+  | { type: 'impact'; pos: Vec; tower: TowerId; radius: number }
   | { type: 'stage_won'; fullHealth: boolean }
   | { type: 'stage_failed' }
 

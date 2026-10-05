@@ -45,7 +45,8 @@ describe('towerStats — 업그레이드 옵션 반영', () => {
       shots: 1,
     })
     expect(towerStats('piri').pierce).toBe(3)
-    expect(towerStats('geobukseon').splashRadius).toBe(0)
+    expect(towerStats('geobukseon').splashRadius).toBe(0.5)
+    expect(towerStats('mansae').splashRadius).toBe(0)
   })
 
   it('위력 +35%/단계, 사거리 +20%, 연사 +30%, 폭탄 +0.5칸, 관통 +1, 쌍발 +1발', () => {
@@ -57,7 +58,7 @@ describe('towerStats — 업그레이드 옵션 반영', () => {
     expect(towerStats('piri', { ...ZERO_UPGRADES, pierce: 1 }).pierce).toBe(4)
     expect(towerStats('mansae', { ...ZERO_UPGRADES, multishot: 2 }).shots).toBe(3)
     // 거북선: 폭탄 옵션으로 단일 강타 → 범위 공격
-    expect(towerStats('geobukseon', { ...ZERO_UPGRADES, splash: 2 }).splashRadius).toBe(1)
+    expect(towerStats('geobukseon', { ...ZERO_UPGRADES, splash: 2 }).splashRadius).toBe(1.5)
   })
 })
 
@@ -166,8 +167,8 @@ describe('projectiles', () => {
       hits.push(...stepProjectile(p, [slime], line, 0, 1 / 60))
     }
     expect(hits).toHaveLength(1)
-    expect(hits[0]).toMatchObject({ enemyId: 1, damage: 5, killed: false })
-    expect(slime.hp).toBe(35)
+    expect(hits[0]).toMatchObject({ enemyId: 1, damage: 11, killed: false })
+    expect(slime.hp).toBe(29)
   })
 
   it('종탑은 반지름 1타일 범위 피해, 온천은 감속을 건다', () => {
@@ -193,7 +194,7 @@ describe('projectiles', () => {
     const b = enemyAt(2, 5.9)
     const hits = flyUntilDone(createProjectile(10, geo, a, line), [a, b])
     expect(hits.map((h) => h.enemyId).sort()).toEqual([1, 2])
-    expect(hits[0]!.damage).toBeCloseTo(40.5) // 30 × 1.35
+    expect(hits[0]!.damage).toBeCloseTo(74.25) // 55 × 1.35
   })
 
   it('피리는 직선으로 최대 3마리를 관통하고, 관통 업그레이드로 4마리', () => {
@@ -218,13 +219,13 @@ describe('projectiles', () => {
     const hits = []
     for (let i = 0; i < 300 && p.alive; i += 1)
       hits.push(...stepProjectile(p, [boss], line, 0, 1 / 60, 100))
-    expect(hits[0]!.damage).toBe(145) // 30 × 1.5 + 100
-    expect(boss.hp).toBe(boss.maxHp - 145)
+    expect(hits[0]!.damage).toBe(182.5) // 55 × 1.5 + 100
+    expect(boss.hp).toBe(boss.maxHp - 182.5)
 
     const slime = enemyAt(2, 5.5)
     const p2 = createProjectile(11, geo, slime, line)
     const hits2 = flyUntilDone(p2, [slime])
-    expect(hits2[0]!.damage).toBe(30)
+    expect(hits2[0]!.damage).toBe(55)
   })
 
   it('대상이 먼저 죽으면 마지막 위치로 날아가 범위 피해만 준다', () => {

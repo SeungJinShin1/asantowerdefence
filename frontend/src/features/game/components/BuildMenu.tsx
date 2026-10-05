@@ -56,11 +56,19 @@ export function BuildMenu({
                 className="inline-block h-7 w-7 shrink-0 rounded-lg"
                 style={{ background: TOWER_COLORS[type] }}
               />
-              <span className="flex flex-col leading-tight">
+              <span className="flex flex-col leading-tight lg:items-start">
                 <span>{spec.name}</span>
                 <span className={affordable ? 'text-amber-800' : 'text-rose-600'}>
                   {unlocked ? `🪙 ${spec.cost}` : `${spec.unlockStage}단계 해금`}
                 </span>
+                {/* 타워마다 무엇이 다른지: 한 줄 설명 + 피해·연사·사거리 (넓은 화면에서만) */}
+                {unlocked && (
+                  <span className="hidden text-left text-xs font-normal text-stone-600 lg:block">
+                    {spec.tagline}
+                    <br />
+                    피해 {spec.damage} · {spec.fireRate}/초 · 사거리 {spec.range}
+                  </span>
+                )}
               </span>
             </button>
           )

@@ -19,11 +19,11 @@ export const MAX_LIVES = 10
  */
 export const STAGE_SCALE = {
   /** 일반 몬스터 체력 */
-  hp: [1.0, 1.15, 1.3, 1.45, 1.6],
+  hp: [1.0, 1.3, 1.7, 2.2, 2.5],
   /** 보스 체력 */
-  bossHp: [0.55, 0.7, 0.85, 1.0, 1.15],
+  bossHp: [0.55, 0.9, 1.5, 2.2, 2.6],
   /** 웨이브 몬스터 수 */
-  count: [0.6, 0.8, 0.9, 1.0, 1.0],
+  count: [0.6, 0.9, 1.0, 1.15, 1.2],
 } as const
 
 export function stageScale(stage: number): { hp: number; bossHp: number; count: number } {
@@ -47,6 +47,8 @@ export type ProjectileKind = 'splash_slow' | 'pierce' | 'cannon' | 'splash' | 'r
 export interface TowerSpec {
   id: TowerId
   name: string
+  /** 건설 메뉴에 보여 주는 한 줄 설명(무엇을 쏘고 무엇에 강한지) */
+  tagline: string
   cost: number
   /** 사거리(타일) */
   range: number
@@ -63,10 +65,15 @@ export interface TowerSpec {
   bossBonus?: number
 }
 
+/**
+ * 타워 5종 — 나중에 열리는 타워일수록 비싸고 확실히 강하다(초당 피해: 7 → 12 → 33 → 20(광역) → 44).
+ * 역할도 다르다: 온천=감속, 피리=관통, 거북선=한 방·보스, 종탑=광역, 만세=장거리 연사.
+ */
 export const TOWERS: Record<TowerId, TowerSpec> = {
   onsen: {
     id: 'onsen',
     name: '온천 타워',
+    tagline: '물줄기 · 적을 느리게',
     cost: 50,
     range: 2.0,
     damage: 6,
@@ -81,52 +88,57 @@ export const TOWERS: Record<TowerId, TowerSpec> = {
   piri: {
     id: 'piri',
     name: '피리 타워',
+    tagline: '소리 파동 · 여러 마리 관통',
     cost: 70,
     range: 3.0,
-    damage: 8,
+    damage: 12,
     fireRate: 1.0,
     targeting: 'nearest_base',
     projectile: 'pierce',
-    projectileSpeed: 9,
+    projectileSpeed: 11,
     unlockStage: 2,
     pierce: 3,
   },
   geobukseon: {
     id: 'geobukseon',
     name: '거북선 타워',
+    tagline: '대포 · 한 방이 강하고 보스에 강함',
     cost: 100,
-    range: 2.5,
-    damage: 30,
-    fireRate: 0.5,
+    range: 2.6,
+    damage: 55,
+    fireRate: 0.6,
     targeting: 'max_hp',
     projectile: 'cannon',
-    projectileSpeed: 6,
+    projectileSpeed: 9,
     unlockStage: 3,
+    splashRadius: 0.5,
     bossBonus: 0.5,
   },
   bell: {
     id: 'bell',
     name: '종탑 타워',
-    cost: 90,
-    range: 2.2,
-    damage: 12,
-    fireRate: 0.8,
+    tagline: '종소리 · 넓게 퍼지는 충격',
+    cost: 120,
+    range: 2.4,
+    damage: 22,
+    fireRate: 0.9,
     targeting: 'nearest_base',
     projectile: 'splash',
-    projectileSpeed: 8,
+    projectileSpeed: 9,
     unlockStage: 4,
-    splashRadius: 1.0,
+    splashRadius: 1.2,
   },
   mansae: {
     id: 'mansae',
     name: '만세 망루',
-    cost: 80,
+    tagline: '화살 연사 · 멀리 빠르게',
+    cost: 150,
     range: 3.5,
-    damage: 5,
-    fireRate: 3.0,
+    damage: 11,
+    fireRate: 4.0,
     targeting: 'nearest_base',
     projectile: 'rapid',
-    projectileSpeed: 12,
+    projectileSpeed: 14,
     unlockStage: 5,
   },
 }

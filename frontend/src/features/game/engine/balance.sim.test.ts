@@ -88,9 +88,9 @@ function simulate(stage: number, accuracy: number, seed: number, skill: Skill): 
     const affordable = unlocked.filter((t) => g.state.coins >= TOWERS[t].cost)
     if (affordable.length === 0) return undefined
     if (skill === 'expert') return affordable[affordable.length - 1]
-    // 초보: 60% 가장 싼 것, 40% 아무거나
+    // 초보: 새로 열린(가장 비싼) 타워를 써 보고 싶어 한다 — 60% 최신, 40% 아무거나
     return prng.next() < 0.6
-      ? affordable[0]
+      ? affordable[affordable.length - 1]
       : affordable[Math.floor(prng.next() * affordable.length)]
   }
   const tryUpgrade = () => {
@@ -148,9 +148,14 @@ function simulate(stage: number, accuracy: number, seed: number, skill: Skill): 
 const SEEDS = [1, 2, 3, 4]
 const PROFILES = [0.5, 0.7, 0.9]
 
-function table(skill: Skill): { rows: string[]; winRate: Record<string, number> } {
+function table(skill: Skill): {
+  rows: string[]
+  winRate: Record<string, number>
+  lives: Record<string, number>
+} {
   const rows: string[] = []
   const winRate: Record<string, number> = {}
+  const lives: Record<string, number> = {}
   for (const accuracy of PROFILES) {
     for (let stage = 1; stage <= 5; stage += 1) {
       const results = SEEDS.map((seed) => simulate(stage, accuracy, seed, skill))
@@ -158,6 +163,7 @@ function table(skill: Skill): { rows: string[]; winRate: Record<string, number> 
       const avg = (f: (r: Outcome) => number) =>
         results.reduce((n, r) => n + f(r), 0) / results.length
       winRate[`${accuracy}-${stage}`] = wins / results.length
+      lives[`${accuracy}-${stage}`] = avg((r) => r.lives)
       rows.push(
         `정답률 ${Math.round(accuracy * 100)}% · ${stage}단계 → 승 ${wins}/${results.length}` +
           ` · 남은 체력 ${avg((r) => r.lives).toFixed(1)}` +
@@ -167,22 +173,24 @@ function table(skill: Skill): { rows: string[]; winRate: Record<string, number> 
       )
     }
   }
-  return { rows, winRate }
+  return { rows, winRate, lives }
 }
 
 describe('밸런스 시뮬레이션(부스 모드, 가상 플레이어)', () => {
-  it('초보: 절반을 틀려도 1~2단계는 깨고, 70%면 3단계까지 안정적으로 깬다', () => {
-    const { rows, winRate } = table('novice')
+  it('초보(새 타워를 먼저 사는 아이): 절반을 틀려도 4단계까지 깨고, 5단계는 접전이다', () => {
+    const { rows, winRate, lives } = table('novice')
     console.info(`\n[밸런스 표 — 초보]\n${rows.join('\n')}\n`)
-    expect(winRate['0.5-1']).toBeGreaterThanOrEqual(0.75)
-    expect(winRate['0.5-2']).toBeGreaterThanOrEqual(0.5)
-    expect(winRate['0.7-1']).toBe(1)
-    expect(winRate['0.7-2']).toBeGreaterThanOrEqual(0.75)
-    expect(winRate['0.7-3']).toBeGreaterThanOrEqual(0.75)
-    // 후반은 초보에게 긴장감이 있어야 한다(절반 틀리면 5단계는 대체로 진다)
-    expect(winRate['0.5-5']).toBeLessThanOrEqual(0.5)
-    // 잘 맞히는 초보는 5단계도 절반 이상 깬다(너무 어렵지 않게)
-    expect(winRate['0.9-5']).toBeGreaterThanOrEqual(0.5)
+    // 절반을 틀려도 1~4단계는 깬다
+    for (const stage of [1, 2, 3, 4]) expect(winRate[`0.5-${stage}`]).toBeGreaterThanOrEqual(0.75)
+    // 회귀 방지: 새로 열린 타워(거북선·종탑)를 사도 3·4단계가 벽이 되지 않는다
+    expect(winRate['0.7-3']).toBe(1)
+    expect(lives['0.7-3']).toBeGreaterThanOrEqual(6)
+    expect(winRate['0.7-4']).toBe(1)
+    // 5단계: 잘 맞히면 깨지만 여유롭지는 않다(깰듯 말듯)
+    expect(winRate['0.9-5']).toBeGreaterThanOrEqual(0.75)
+    expect(winRate['0.5-5']).toBeGreaterThanOrEqual(0.5)
+    expect(lives['0.5-5']).toBeLessThanOrEqual(6)
+    expect(lives['0.7-5']).toBeLessThanOrEqual(7)
   }, 120_000)
 
   it('고수: 잘 맞히면 전부 깬다', () => {

@@ -14,6 +14,21 @@ import {
 } from './waves'
 
 describe('balance — docs/02 §4·§5 표', () => {
+  it('나중에 열리는 타워일수록 비싸고, 비쌀수록 강하다', () => {
+    const costs = TOWER_ORDER.map((id) => TOWERS[id].cost)
+    expect(costs).toEqual([...costs].sort((a, b) => a - b))
+    expect(new Set(costs).size).toBe(costs.length)
+    const dps = (id: (typeof TOWER_ORDER)[number]) => TOWERS[id].damage * TOWERS[id].fireRate
+    // 단일 대상 초당 피해: 온천 < 피리 < 종탑(광역이라 한 대상 기준은 낮음) < 거북선 < 만세
+    expect(dps('onsen')).toBeLessThan(dps('piri'))
+    expect(dps('piri')).toBeLessThan(dps('bell'))
+    expect(dps('bell')).toBeLessThan(dps('geobukseon'))
+    expect(dps('geobukseon')).toBeLessThan(dps('mansae'))
+    // 한 방 피해도 타워마다 다르다
+    expect(new Set(TOWER_ORDER.map((id) => TOWERS[id].damage)).size).toBe(5)
+    for (const id of TOWER_ORDER) expect(TOWERS[id].tagline.length).toBeGreaterThan(0)
+  })
+
   it('타워 5종의 비용·사거리·피해·공격속도', () => {
     expect(
       TOWER_ORDER.map((id) => [
@@ -25,15 +40,16 @@ describe('balance — docs/02 §4·§5 표', () => {
       ]),
     ).toEqual([
       ['onsen', 50, 2.0, 6, 1.2],
-      ['piri', 70, 3.0, 8, 1.0],
-      ['geobukseon', 100, 2.5, 30, 0.5],
-      ['bell', 90, 2.2, 12, 0.8],
-      ['mansae', 80, 3.5, 5, 3.0],
+      ['piri', 70, 3.0, 12, 1.0],
+      ['geobukseon', 100, 2.6, 55, 0.6],
+      ['bell', 120, 2.4, 22, 0.9],
+      ['mansae', 150, 3.5, 11, 4.0],
     ])
     expect(TOWERS.geobukseon.targeting).toBe('max_hp')
     expect(TOWERS.geobukseon.bossBonus).toBe(0.5)
     expect(TOWERS.piri.pierce).toBe(3)
-    expect(TOWERS.bell.splashRadius).toBe(1.0)
+    expect(TOWERS.bell.splashRadius).toBe(1.2)
+    expect(TOWERS.geobukseon.splashRadius).toBe(0.5)
     expect(TOWERS.onsen.slow).toEqual({ factor: 0.3, durationSec: 1.5 })
     expect(TOWER_ORDER.map((id) => TOWERS[id].unlockStage)).toEqual([1, 2, 3, 4, 5])
     expect(GAME_SPEEDS).toEqual([1, 2, 4, 8])
